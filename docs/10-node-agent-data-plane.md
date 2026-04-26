@@ -34,10 +34,10 @@
 
 ## Go Layout Target
 
-- `cmd/node-agent`
-- `internal/agentconfig`
-- `internal/policystore`
-- `internal/proxy`
-- `internal/relay`
-- `internal/heartbeat`
-- `internal/trust`
+- `apps/proxy-node/cmd/proxy-node`
+- `apps/proxy-node/internal/agentconfig`
+- `apps/proxy-node/internal/policystore`
+- `apps/proxy-node/internal/proxy`
+- `apps/proxy-node/internal/controlrelay`
+- `apps/proxy-node/internal/heartbeat`
+- `apps/proxy-node/internal/controlplane`

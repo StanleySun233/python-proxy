@@ -1,0 +1,111 @@
+/*
+ * GeoQA — Theme Color Reference
+ * Source: static/app.css
+ * ─────────────────────────────────────────────────────
+ *
+ * CSS 变量（Design Tokens）
+ * ─────────────────────────────────────────────────────
+ * --primary    #88b04b   橄榄绿   品牌主色，按钮/链接/激活态
+ * --secondary  #d2b48c   驼色     默认按钮背景
+ * --bg         #fff9ef   米白     页面背景
+ * --panel      #f0f4e3   浅绿白   卡片/面板背景
+ * --panel-2    #fff9ef   米白     次级面板（=bg，过滤行背景）
+ * --line       #e6d5b8   浅棕     边框/分割线
+ * --text       #4a3b2c   深棕     正文
+ * --muted      #8b7a66   中棕灰   次要文字/标签
+ * --accent     #c97b5a   赭红     hover 强调色
+ * --danger     #c97b5a   赭红     危险操作（同 accent）
+ *
+ * ─────────────────────────────────────────────────────
+ * 硬编码色（未纳入变量）
+ * ─────────────────────────────────────────────────────
+ * Banner-info 背景  #eef7e8  浅绿白（配 --primary 边框）
+ * Banner-info 文字  #3a5c1e  深绿
+ * Banner-warn 背景  #fef3e8  浅橙白（配 --danger 边框）
+ * Banner-warn 文字  #7a3b1e  深赭
+ *
+ * Diff Easy  背景 #d4edda  文字 #155724  边框 #b1dfbb  绿色系
+ * Diff Mid   背景 #fff3cd  文字 #856404  边框 #ffeeba  黄色系
+ * Diff Hard  背景 #f8d7da  文字 #721c24  边框 #f5c6cb  红色系
+ * Diff None  背景 var(--panel)  文字 var(--muted)
+ *
+ * ─────────────────────────────────────────────────────
+ * 调色板总览
+ * ─────────────────────────────────────────────────────
+ *
+ *  绿色系（品牌）
+ *    #88b04b  primary       橄榄绿
+ *    #f0f4e3  panel         浅绿白面板
+ *    #eef7e8  info-banner   极浅绿
+ *    #3a5c1e  info-text     深绿文字
+ *    #d4edda  easy-bg       柔绿（easy 标签）
+ *    #155724  easy-text     深绿（easy 标签）
+ *    #b1dfbb  easy-border
+ *
+ *  暖棕/米色系（背景/文字）
+ *    #fff9ef  bg / panel-2  米白背景
+ *    #e6d5b8  line          浅棕边框
+ *    #d2b48c  secondary     驼色按钮
+ *    #8b7a66  muted         中棕灰
+ *    #4a3b2c  text          深棕正文
+ *
+ *  赭红/橙色系（强调/危险）
+ *    #c97b5a  accent/danger 赭红
+ *    #fef3e8  warn-banner   浅橙白
+ *    #7a3b1e  warn-text     深赭文字
+ *    #fff3cd  middle-bg     柔黄（middle 标签）
+ *    #856404  middle-text
+ *    #ffeeba  middle-border
+ *
+ *  红色系（hard 难度）
+ *    #f8d7da  hard-bg
+ *    #721c24  hard-text
+ *    #f5c6cb  hard-border
+ *
+ * ─────────────────────────────────────────────────────
+ * 字体
+ * ─────────────────────────────────────────────────────
+ * font-family: "IBM Plex Sans", "Segoe UI", sans-serif
+ *
+ * ─────────────────────────────────────────────────────
+ * 圆角规范
+ * ─────────────────────────────────────────────────────
+ * 页面卡片 / hero  14px
+ * 按钮 / 输入框   10px
+ * 小卡片 / 预览   8px
+ * 胶囊标签        999px
+ */
+
+:root {
+  /* ── 核心 Design Tokens ── */
+  --primary:   #88b04b;   /* 橄榄绿  品牌主色 */
+  --secondary: #d2b48c;   /* 驼色    默认按钮背景 */
+  --bg:        #fff9ef;   /* 米白    页面背景 */
+  --panel:     #f0f4e3;   /* 浅绿白  卡片背景 */
+  --panel-2:   #fff9ef;   /* 米白    次级面板（同 bg） */
+  --line:      #e6d5b8;   /* 浅棕    边框 / 分割线 */
+  --text:      #4a3b2c;   /* 深棕    正文 */
+  --muted:     #8b7a66;   /* 中棕灰  次要文字 */
+  --accent:    #c97b5a;   /* 赭红    hover 强调 */
+  --danger:    #c97b5a;   /* 赭红    危险操作（同 accent） */
+
+  /* ── 难度标签（硬编码，供参考） ── */
+  --diff-easy-bg:     #d4edda;
+  --diff-easy-text:   #155724;
+  --diff-easy-border: #b1dfbb;
+
+  --diff-mid-bg:      #fff3cd;
+  --diff-mid-text:    #856404;
+  --diff-mid-border:  #ffeeba;
+
+  --diff-hard-bg:     #f8d7da;
+  --diff-hard-text:   #721c24;
+  --diff-hard-border: #f5c6cb;
+
+  /* ── 通知 Banner（硬编码，供参考） ── */
+  --banner-info-bg:   #eef7e8;
+  --banner-info-text: #3a5c1e;
+
+  --banner-warn-bg:   #fef3e8;
+  --banner-warn-text: #7a3b1e;
+}
