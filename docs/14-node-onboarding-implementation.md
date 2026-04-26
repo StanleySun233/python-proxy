@@ -119,7 +119,7 @@ Add:
 - `/api/v1/node-access-paths/{pathId}`
 - `/api/v1/node-onboarding-tasks`
 
-## SQLite Changes
+## Control-Plane Database Changes
 
 ### Tables
 
@@ -136,7 +136,7 @@ Add `node_onboarding_tasks`:
 
 ### Migration Policy
 
-For now, add these with startup `CREATE TABLE IF NOT EXISTS` guards so current databases keep working.
+For now, add these through the control-plane database migration path so current MySQL schemas stay aligned.
 
 ## Node-Agent Changes
 

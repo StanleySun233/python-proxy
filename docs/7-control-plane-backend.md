@@ -15,7 +15,7 @@
 - `internal/config`: environment and runtime config
 - `internal/httpapi`: routers, handlers, middleware
 - `internal/service`: business logic
-- `internal/store`: SQLite access
+- `internal/store`: GORM-managed MySQL access
 - `internal/policy`: compile route rules and chains into node snapshots
 - `internal/auth`: password hashing and token flow
 - `internal/nodeenroll`: bootstrap and trust handshake
@@ -31,7 +31,7 @@
 ## Configuration Keys
 
 - `HTTP_ADDR`
-- `SQLITE_PATH`
+- `MYSQL_DSN`
 - `JWT_SIGNING_KEY`
 - `BOOTSTRAP_TOKEN_TTL`
 - `NODE_CERT_TTL`

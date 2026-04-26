@@ -29,7 +29,7 @@ Build the control plane in layers:
 
 ### Step 4
 
-- replace seed store with SQLite-backed store
+- replace seed store with MySQL-backed store
 - keep seed store as emergency fallback only during early integration
 
 ### Step 5
@@ -41,5 +41,5 @@ Build the control plane in layers:
 
 - handlers should not know about SQL
 - service layer should return domain objects
-- store layer should be replaceable from seed-memory to SQLite
+- store layer should be replaceable from seed-memory to MySQL
 - API response shapes should stabilize before frontend wiring

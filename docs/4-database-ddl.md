@@ -2,8 +2,8 @@
 
 ## Notes
 
-- database engine: `sqlite3`
-- SQLite is for the control plane primary node only
+- database engine: `mysql8`
+- MySQL 8.0 is the primary database for the control plane
 - node agents should keep local runtime cache, not write to the control plane DB directly
 
 ## Initial Tables

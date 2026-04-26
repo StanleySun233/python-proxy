@@ -15,7 +15,7 @@ Build a multi-node proxy product where a user connects once from a Chrome extens
 ## V1 Scope
 
 - Chrome extension stays plain JavaScript
-- control plane backend uses Go and SQLite
+- control plane backend uses Go, GORM, and MySQL 8.0
 - admin console uses Next.js
 - node routing is whitelist-based
 - supported traffic types are `http`, `https`, and `ws`

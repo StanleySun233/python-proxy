@@ -4,7 +4,7 @@
 
 - freeze V1 product scope
 - finalize core objects and route model
-- finalize SQLite schema
+- finalize MySQL 8.0 schema and migration flow
 - finalize control plane API contract
 
 ## Phase 2
