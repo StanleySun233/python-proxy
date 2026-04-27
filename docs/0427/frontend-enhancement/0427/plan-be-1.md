@@ -6,3 +6,5 @@
 - [x] Implement `GET /api/v1/route-rules/suggestions` — [ref](../routes-management-ui.md#get-apiv1route-rulessuggestions)
 
 ## Review Log
+- [x] `POST /api/v1/route-rules/validate` — approved 2026-04-27, code correct
+- [x] `GET /api/v1/route-rules/suggestions` — approved 2026-04-27, code correct
