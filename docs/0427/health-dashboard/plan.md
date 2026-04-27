@@ -4,7 +4,8 @@
 
 | Role | ID | Plan | Scope |
 |------|----|------|-------|
-| Frontend | FE-1 | [plan-fe-1.md](./plan-fe-1.md) | ECharts install, sidebar, redirect, overview, heartbeat, certificates, history API client |
+| Frontend | FE-1 | [plan-fe-1.md](./plan-fe-1.md) | ECharts install, sidebar nav, redirect, Overview dashboard |
+| Frontend | FE-2 | [plan-fe-2.md](./plan-fe-2.md) | History API client, Heartbeat page, Certificate page |
 | Backend | BE-1 | [plan-be-1.md](./plan-be-1.md) | History table, history API, cleanup job |
 
 ## Frontend Tasks
@@ -14,8 +15,11 @@
 - [ ] Install ECharts dependencies — [ref](../health.md#atomic-1)
 - [ ] Update sidebar navigation with health sub-menus — [ref](../health.md#atomic-2)
 - [ ] Create health redirect page — [ref](../health.md#atomic-3)
-- [ ] Add health history API client function — [ref](../health.md#atomic-6)
 - [ ] Create Health Overview page with ECharts dashboard — [ref](../health.md#atomic-7)
+
+### FE-2 — [plan](./plan-fe-2.md)
+
+- [ ] Add health history API client function — [ref](../health.md#atomic-6)
 - [ ] Create Heartbeat Monitor page — [ref](../health.md#atomic-8)
 - [ ] Create Certificate Monitor page — [ref](../health.md#atomic-9)
 
