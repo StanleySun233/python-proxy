@@ -17,3 +17,5 @@
 - [15-node-onboarding-api.md](/home/sijin/workspace/proxy/docs/15-node-onboarding-api.md)
 - [16-frontend-tech-stack.md](/home/sijin/workspace/proxy/docs/16-frontend-tech-stack.md)
 - [17-frontend-information-architecture.md](/home/sijin/workspace/proxy/docs/17-frontend-information-architecture.md)
+- [18-reverse-tunnel-requirements.md](/home/sijin/workspace/proxy/docs/18-reverse-tunnel-requirements.md)
+- [19-reverse-tunnel-design.md](/home/sijin/workspace/proxy/docs/19-reverse-tunnel-design.md)

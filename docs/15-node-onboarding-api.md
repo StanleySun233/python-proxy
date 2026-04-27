@@ -79,7 +79,7 @@ Request for direct push:
 {
   "mode": "direct",
   "targetNodeId": "node2",
-  "targetHost": "172.20.10.15",
+  "targetHost": "node2.internal.example.com",
   "targetPort": 2888
 }
 ```
