@@ -114,6 +114,6 @@ The dark theme should remain in the same visual family instead of switching to g
 
 ## Deferred Additions
 
-- generated OpenAPI client from `apps/control-plane-api/openapi.yaml`
+- generated OpenAPI client from `apps/one-panel-api/openapi.yaml`
 - richer chart package only if `recharts` becomes limiting
 - state store such as `zustand` only if local UI state complexity truly grows beyond route and query state

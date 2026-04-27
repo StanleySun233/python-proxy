@@ -3,8 +3,8 @@
 ## Top Level
 
 - `apps/chrome-extension`: browser entry point
-- `apps/control-plane-api`: Go control plane
-- `apps/control-plane-web`: Next.js admin console
+- `apps/one-panel-api`: Go control plane
+- `apps/one-proxy-panel`: Next.js admin console
 - `prototypes/proxy-node-demo`: Python reference only
 
 ## Control Plane And Data Plane

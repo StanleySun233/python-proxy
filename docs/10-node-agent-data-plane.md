@@ -34,10 +34,10 @@
 
 ## Go Layout Target
 
-- `apps/proxy-node/cmd/proxy-node`
-- `apps/proxy-node/internal/agentconfig`
-- `apps/proxy-node/internal/policystore`
-- `apps/proxy-node/internal/proxy`
-- `apps/proxy-node/internal/controlrelay`
-- `apps/proxy-node/internal/heartbeat`
-- `apps/proxy-node/internal/controlplane`
+- `apps/one-proxy-node/cmd/one-proxy-node`
+- `apps/one-proxy-node/internal/agentconfig`
+- `apps/one-proxy-node/internal/policystore`
+- `apps/one-proxy-node/internal/proxy`
+- `apps/one-proxy-node/internal/controlrelay`
+- `apps/one-proxy-node/internal/heartbeat`
+- `apps/one-proxy-node/internal/controlplane`

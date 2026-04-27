@@ -11,7 +11,7 @@
 
 ## Go Service Layout
 
-- `cmd/control-plane`: process entrypoint
+- `cmd/one-proxy-panel`: process entrypoint
 - `internal/config`: environment and runtime config
 - `internal/httpapi`: routers, handlers, middleware
 - `internal/service`: business logic
