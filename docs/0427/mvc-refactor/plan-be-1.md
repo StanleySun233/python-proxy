@@ -9,6 +9,6 @@
 ## Review Log
 | # | Task | Commit | Status | Date |
 |---|------|--------|--------|------|
-| 1 | Split domain/types.go by entity | 0b3f0e7 | Done | 2026-04-27 |
-| 2 | Reorganize store interface into entity interfaces | 468ccaf | Done | 2026-04-27 |
-| 3 | Split store/mysql.go into entity repository files | 700a068 | Done | 2026-04-27 |
+| 1 | Split domain/types.go by entity | 8b13a72 (was 0b3f0e7) | Done | 2026-04-27 |
+| 2 | Reorganize store interface into entity interfaces | 4d7ae29 (was 468ccaf) | Done | 2026-04-27 |
+| 3 | Split store/mysql.go into entity repository files | 8f68595 (was 700a068) | Done | 2026-04-27 |
