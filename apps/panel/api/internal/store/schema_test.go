@@ -27,6 +27,10 @@ func TestInitSchemaRunsFinalSchemaForEmptyDatabase(t *testing.T) {
 	if !strings.Contains(normalizedChainHops, "PRIMARY KEY (chain_id, hop_index, candidate_index)") {
 		t.Fatalf("chain_hops primary key does not preserve candidate priority: %s", normalizedChainHops)
 	}
+	chainProbeResults := findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS chain_probe_results")
+	if normalized := normalizedQuery(chainProbeResults.Query); !strings.Contains(normalized, "blocking_group_index INT NOT NULL DEFAULT -1") {
+		t.Fatalf("chain_probe_results missing blocking group: %s", normalized)
+	}
 }
 
 func TestInitSchemaSkipsNonEmptyDatabase(t *testing.T) {

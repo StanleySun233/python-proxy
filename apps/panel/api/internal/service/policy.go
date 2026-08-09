@@ -149,7 +149,7 @@ func extensionAccessPaths(paths []domain.NodeAccessPath, chainsByID map[string]p
 			AuthMode:       path.AuthMode,
 			Enabled:        path.Enabled,
 			Options:        cloneStringMap(path.Options),
-			Topology:       extensionTopology(nodesByID, chain.Hops, extensionTransport(path)),
+			TopologyGroups: extensionTopologyGroups(nodesByID, chain.HopGroups, extensionTransport(path)),
 			Health: domain.ExtensionPathHealth{
 				Status:    extensionPathStatus(path, chain, nodesByID),
 				Reason:    extensionPathReason(path, chain, nodesByID),
@@ -179,7 +179,7 @@ func extensionRoutes(rules []proxy.RouteRule, paths []domain.NodeAccessPath, cha
 			continue
 		}
 		chain := chainsByID[rule.ChainID]
-		topology := extensionTopology(nodesByID, chain.Hops, extensionTransport(path))
+		topologyGroups := extensionTopologyGroups(nodesByID, chain.HopGroups, extensionTransport(path))
 		result = append(result, domain.ExtensionRoute{
 			ID:               rule.ID,
 			Priority:         rule.Priority,
@@ -190,28 +190,32 @@ func extensionRoutes(rules []proxy.RouteRule, paths []domain.NodeAccessPath, cha
 			AccessPathID:     path.ID,
 			DestinationScope: rule.DestinationScope,
 			Enabled:          rule.Enabled,
-			Topology:         topology,
+			TopologyGroups:   topologyGroups,
 		})
 	}
 	return result
 }
 
-func extensionTopology(nodesByID map[string]domain.Node, nodeIDs []string, transport string) []domain.ExtensionTopologyHop {
-	result := make([]domain.ExtensionTopologyHop, 0, len(nodeIDs))
-	for _, nodeID := range nodeIDs {
-		node, ok := nodesByID[nodeID]
-		if !ok {
-			continue
+func extensionTopologyGroups(nodesByID map[string]domain.Node, groups []proxy.ChainHopGroup, transport string) []domain.ExtensionTopologyGroup {
+	result := make([]domain.ExtensionTopologyGroup, 0, len(groups))
+	for _, group := range groups {
+		candidates := make([]domain.ExtensionTopologyHop, 0, len(group.Candidates))
+		for _, nodeID := range group.Candidates {
+			node, ok := nodesByID[nodeID]
+			if !ok {
+				continue
+			}
+			candidates = append(candidates, domain.ExtensionTopologyHop{
+				NodeID:     node.ID,
+				NodeName:   node.Name,
+				Mode:       node.Mode,
+				ScopeKey:   node.ScopeKey,
+				PublicHost: node.PublicHost,
+				PublicPort: node.PublicPort,
+				Transport:  transport,
+			})
 		}
-		result = append(result, domain.ExtensionTopologyHop{
-			NodeID:     node.ID,
-			NodeName:   node.Name,
-			Mode:       node.Mode,
-			ScopeKey:   node.ScopeKey,
-			PublicHost: node.PublicHost,
-			PublicPort: node.PublicPort,
-			Transport:  transport,
-		})
+		result = append(result, domain.ExtensionTopologyGroup{Candidates: candidates})
 	}
 	return result
 }
@@ -238,9 +242,16 @@ func extensionPathStatus(path domain.NodeAccessPath, chain proxy.Chain, nodesByI
 	if !path.Enabled || !chain.Enabled {
 		return "disabled"
 	}
-	for _, nodeID := range chain.Hops {
-		node, ok := nodesByID[nodeID]
-		if !ok || !node.Enabled {
+	for _, group := range chain.HopGroups {
+		available := false
+		for _, nodeID := range group.Candidates {
+			node, ok := nodesByID[nodeID]
+			if ok && node.Enabled {
+				available = true
+				break
+			}
+		}
+		if !available {
 			return "blocked"
 		}
 	}
@@ -254,9 +265,16 @@ func extensionPathReason(path domain.NodeAccessPath, chain proxy.Chain, nodesByI
 	if !chain.Enabled {
 		return "chain_disabled"
 	}
-	for _, nodeID := range chain.Hops {
-		node, ok := nodesByID[nodeID]
-		if !ok || !node.Enabled {
+	for _, group := range chain.HopGroups {
+		available := false
+		for _, nodeID := range group.Candidates {
+			node, ok := nodesByID[nodeID]
+			if ok && node.Enabled {
+				available = true
+				break
+			}
+		}
+		if !available {
 			return "node_unavailable"
 		}
 	}
@@ -306,8 +324,10 @@ func extensionBootstrapNodes(scoped []domain.Node, all []domain.Node, chains []p
 			if !ok || !chain.Enabled {
 				continue
 			}
-			for _, nodeID := range chain.Hops {
-				add(byID[nodeID])
+			for _, group := range chain.HopGroups {
+				for _, nodeID := range group.Candidates {
+					add(byID[nodeID])
+				}
 			}
 			continue
 		}

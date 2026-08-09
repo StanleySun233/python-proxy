@@ -70,12 +70,43 @@ func Compile(nodes []domain.Node, links []domain.NodeLink, chains []proxy.Chain,
 					return "", fmt.Errorf("chain %s contains duplicate node %s", chain.ID, candidate)
 				}
 				seen[candidate] = struct{}{}
+				if groupIndex == 0 && nodeSet[candidate].Mode != domain.NodeModeEdge {
+					return "", fmt.Errorf("chain %s entry_candidate_not_edge %s", chain.ID, candidate)
+				}
 			}
 		}
 		lastGroup := chain.HopGroups[len(chain.HopGroups)-1]
 		for _, candidate := range lastGroup.Candidates {
 			if nodeSet[candidate].ScopeKey != chain.DestinationScope {
 				return "", fmt.Errorf("chain %s destination_scope_mismatch", chain.ID)
+			}
+		}
+		for groupIndex := 0; groupIndex+1 < len(chain.HopGroups); groupIndex++ {
+			current := chain.HopGroups[groupIndex]
+			next := chain.HopGroups[groupIndex+1]
+			for _, sourceID := range current.Candidates {
+				reachable := false
+				for _, targetID := range next.Candidates {
+					if configuredLink(sourceID, targetID, links) {
+						reachable = true
+						break
+					}
+				}
+				if !reachable {
+					return "", fmt.Errorf("chain %s isolated_outbound_candidate %s", chain.ID, sourceID)
+				}
+			}
+			for _, targetID := range next.Candidates {
+				reachable := false
+				for _, sourceID := range current.Candidates {
+					if configuredLink(sourceID, targetID, links) {
+						reachable = true
+						break
+					}
+				}
+				if !reachable {
+					return "", fmt.Errorf("chain %s isolated_inbound_candidate %s", chain.ID, targetID)
+				}
 			}
 		}
 	}
@@ -129,6 +160,15 @@ func Compile(nodes []domain.Node, links []domain.NodeLink, chains []proxy.Chain,
 		return "", err
 	}
 	return string(payload), nil
+}
+
+func configuredLink(sourceID string, targetID string, links []domain.NodeLink) bool {
+	for _, link := range links {
+		if link.SourceNodeID == sourceID && link.TargetNodeID == targetID {
+			return true
+		}
+	}
+	return false
 }
 
 func supportedNodeMatchType(matchType string) bool {

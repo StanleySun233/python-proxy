@@ -252,9 +252,9 @@ func (s *Service) ValidateRouteRule(tenantCtx domain.TenantAuthContext, input pr
 			result.Errors = append(result.Errors, "chain_not_found")
 		} else {
 			result.ChainValidation = proxy.ChainValidation{
-				Valid:        true,
-				ChainEnabled: matchedChain.Enabled,
-				ChainHops:    matchedChain.Hops,
+				Valid:          true,
+				ChainEnabled:   matchedChain.Enabled,
+				ChainHopGroups: matchedChain.HopGroups,
 			}
 			if !matchedChain.Enabled {
 				result.Warnings = append(result.Warnings, "Selected chain is disabled")
@@ -280,13 +280,21 @@ func (s *Service) ValidateRouteRule(tenantCtx domain.TenantAuthContext, input pr
 		result.Errors = append(result.Errors, "scope_not_found")
 	} else {
 		matchesFinalHop := false
-		ownerNodeID := ""
-		if matchedChain != nil && len(matchedChain.Hops) > 0 {
-			finalHopID := matchedChain.Hops[len(matchedChain.Hops)-1]
-			ownerNodeID = finalHopID
-			for _, node := range s.store.ListNodesForTenant(tenantCtx) {
-				if node.ID == finalHopID {
-					matchesFinalHop = node.ScopeKey == input.DestinationScope
+		ownerNodeIDs := []string{}
+		if matchedChain != nil && len(matchedChain.HopGroups) > 0 {
+			finalGroup := matchedChain.HopGroups[len(matchedChain.HopGroups)-1]
+			ownerNodeIDs = append(ownerNodeIDs, finalGroup.Candidates...)
+			matchesFinalHop = len(ownerNodeIDs) > 0
+			for _, ownerNodeID := range ownerNodeIDs {
+				matched := false
+				for _, node := range s.store.ListNodesForTenant(tenantCtx) {
+					if node.ID == ownerNodeID {
+						matched = node.ScopeKey == input.DestinationScope
+						break
+					}
+				}
+				if !matched {
+					matchesFinalHop = false
 					break
 				}
 			}
@@ -294,10 +302,10 @@ func (s *Service) ValidateRouteRule(tenantCtx domain.TenantAuthContext, input pr
 		result.ScopeValidation = proxy.ScopeValidation{
 			Valid:                true,
 			ScopeExists:          true,
-			ScopeOwnerNodeID:     ownerNodeID,
+			ScopeOwnerNodeIDs:    ownerNodeIDs,
 			MatchesChainFinalHop: matchesFinalHop,
 		}
-		if !matchesFinalHop && matchedChain != nil && len(matchedChain.Hops) > 0 {
+		if !matchesFinalHop && matchedChain != nil && len(matchedChain.HopGroups) > 0 {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("Scope %s is not owned by chain's final hop node", input.DestinationScope))
 		}
 	}

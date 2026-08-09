@@ -8,13 +8,13 @@ import (
 	proxy "github.com/StanleySun233/python-proxy/apps/panel/api/internal/features/proxy/domain"
 )
 
-func TestExtensionBootstrapNodesIncludesAuthorizedChainHops(t *testing.T) {
+func TestExtensionBootstrapNodesIncludesAuthorizedChainCandidates(t *testing.T) {
 	allNodes := []domain.Node{
 		{ID: "edge", Name: "edge", Mode: domain.NodeModeEdge, ScopeKey: "edge-scope", PublicHost: "edge.example", PublicPort: 2988, Enabled: true},
 		{ID: "relay", Name: "relay", Mode: domain.NodeModeRelay, ScopeKey: "target-scope", ParentNodeID: "edge", Enabled: true},
 	}
 	chains := []proxy.Chain{
-		{ID: "chain", DestinationScope: "target-scope", Hops: []string{"edge", "relay"}, Enabled: true},
+		{ID: "chain", DestinationScope: "target-scope", HopGroups: []proxy.ChainHopGroup{{Candidates: []string{"edge"}}, {Candidates: []string{"relay"}}}, Enabled: true},
 	}
 	rules := []proxy.RouteRule{
 		{ID: "route", ActionType: domain.ActionTypeChain, ChainID: "chain", Enabled: true},
@@ -32,10 +32,11 @@ func TestExtensionBootstrapNodesIncludesAuthorizedChainHops(t *testing.T) {
 
 func TestExtensionBootstrapSnapshotsUseLatestAccessPathContract(t *testing.T) {
 	nodesByID := map[string]domain.Node{
-		"edge": {ID: "edge", Name: "edge", Mode: domain.NodeModeEdge, ScopeKey: "edge-scope", PublicHost: "edge.example", PublicPort: 2988, Enabled: true},
+		"edge":    {ID: "edge", Name: "edge", Mode: domain.NodeModeEdge, ScopeKey: "edge-scope", PublicHost: "edge.example", PublicPort: 2988, Enabled: true},
+		"standby": {ID: "standby", Name: "standby", Mode: domain.NodeModeEdge, ScopeKey: "edge-scope", PublicHost: "standby.example", PublicPort: 2988, Enabled: true},
 	}
 	chainsByID := map[string]proxy.Chain{
-		"chain": {ID: "chain", DestinationScope: "edge-scope", Hops: []string{"edge"}, Enabled: true},
+		"chain": {ID: "chain", DestinationScope: "edge-scope", HopGroups: []proxy.ChainHopGroup{{Candidates: []string{"edge", "standby"}}}, Enabled: true},
 	}
 	paths := []domain.NodeAccessPath{
 		{
@@ -65,7 +66,7 @@ func TestExtensionBootstrapSnapshotsUseLatestAccessPathContract(t *testing.T) {
 	if len(accessPaths) != 1 {
 		t.Fatalf("accessPaths len = %d", len(accessPaths))
 	}
-	if accessPaths[0].ID != "path" || accessPaths[0].Health.Status != "ready" || accessPaths[0].Topology[0].Transport != "public_http" {
+	if accessPaths[0].ID != "path" || accessPaths[0].Health.Status != "ready" || len(accessPaths[0].TopologyGroups) != 1 || len(accessPaths[0].TopologyGroups[0].Candidates) != 2 || accessPaths[0].TopologyGroups[0].Candidates[1].NodeID != "standby" {
 		t.Fatalf("accessPath = %+v", accessPaths[0])
 	}
 
@@ -73,7 +74,7 @@ func TestExtensionBootstrapSnapshotsUseLatestAccessPathContract(t *testing.T) {
 	if len(routes) != 1 {
 		t.Fatalf("routes len = %d", len(routes))
 	}
-	if routes[0].ID != "route" || routes[0].AccessPathID != "path" || routes[0].Topology[0].NodeID != "edge" {
+	if routes[0].ID != "route" || routes[0].AccessPathID != "path" || routes[0].TopologyGroups[0].Candidates[0].NodeID != "edge" {
 		t.Fatalf("route = %+v", routes[0])
 	}
 

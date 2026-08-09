@@ -173,14 +173,15 @@ func (r proxyRepository) getChainProbeResult(ctx context.Context, chainID string
 		return proxy.ChainProbeResult{}, false
 	}
 	item := proxy.ChainProbeResult{
-		ChainID:        model.ChainID,
-		Status:         model.Status,
-		Message:        model.Message,
-		BlockingNodeID: model.BlockingNodeID,
-		BlockingReason: model.BlockingReason,
-		TargetHost:     model.TargetHost,
-		TargetPort:     model.TargetPort,
-		ProbedAt:       model.ProbedAt,
+		ChainID:            model.ChainID,
+		Status:             model.Status,
+		Message:            model.Message,
+		BlockingGroupIndex: model.BlockingGroupIndex,
+		BlockingNodeID:     model.BlockingNodeID,
+		BlockingReason:     model.BlockingReason,
+		TargetHost:         model.TargetHost,
+		TargetPort:         model.TargetPort,
+		ProbedAt:           model.ProbedAt,
 	}
 	_ = json.Unmarshal([]byte(model.ResolvedHopsJSON), &item.ResolvedHops)
 	return item, true
@@ -192,21 +193,23 @@ func (r proxyRepository) saveChainProbeResult(ctx context.Context, input proxy.S
 		return proxy.ChainProbeResult{}, err
 	}
 	model := ChainProbeResultModel{
-		ChainID:          input.ChainID,
-		Status:           input.Status,
-		Message:          input.Message,
-		ResolvedHopsJSON: string(hopsJSON),
-		BlockingNodeID:   input.BlockingNodeID,
-		BlockingReason:   input.BlockingReason,
-		TargetHost:       input.TargetHost,
-		TargetPort:       input.TargetPort,
-		ProbedAt:         input.ProbedAt,
+		ChainID:            input.ChainID,
+		Status:             input.Status,
+		Message:            input.Message,
+		ResolvedHopsJSON:   string(hopsJSON),
+		BlockingGroupIndex: input.BlockingGroupIndex,
+		BlockingNodeID:     input.BlockingNodeID,
+		BlockingReason:     input.BlockingReason,
+		TargetHost:         input.TargetHost,
+		TargetPort:         input.TargetPort,
+		ProbedAt:           input.ProbedAt,
 	}
 	_, err = r.db.NewInsert().Model(&model).
 		On("DUPLICATE KEY UPDATE").
 		Set("status = VALUES(status)").
 		Set("message = VALUES(message)").
 		Set("resolved_hops_json = VALUES(resolved_hops_json)").
+		Set("blocking_group_index = VALUES(blocking_group_index)").
 		Set("blocking_node_id = VALUES(blocking_node_id)").
 		Set("blocking_reason = VALUES(blocking_reason)").
 		Set("target_host = VALUES(target_host)").
@@ -504,5 +507,5 @@ func nodeAccessPathStoreModel(item domain.NodeAccessPath, createdAt string, upda
 }
 
 func chainProbeResultFromInput(input proxy.SaveChainProbeResultInput) proxy.ChainProbeResult {
-	return proxy.ChainProbeResult{ChainID: input.ChainID, Status: input.Status, Message: input.Message, ResolvedHops: input.ResolvedHops, BlockingNodeID: input.BlockingNodeID, BlockingReason: input.BlockingReason, TargetHost: input.TargetHost, TargetPort: input.TargetPort, ProbedAt: input.ProbedAt}
+	return proxy.ChainProbeResult{ChainID: input.ChainID, Status: input.Status, Message: input.Message, ResolvedHops: input.ResolvedHops, BlockingGroupIndex: input.BlockingGroupIndex, BlockingNodeID: input.BlockingNodeID, BlockingReason: input.BlockingReason, TargetHost: input.TargetHost, TargetPort: input.TargetPort, ProbedAt: input.ProbedAt}
 }

@@ -102,15 +102,16 @@ type NodeOnboardingTaskModel struct {
 type ChainProbeResultModel struct {
 	bun.BaseModel `bun:"table:chain_probe_results"`
 
-	ChainID          string `bun:"chain_id,pk"`
-	Status           string `bun:"status"`
-	Message          string `bun:"message"`
-	ResolvedHopsJSON string `bun:"resolved_hops_json"`
-	BlockingNodeID   string `bun:"blocking_node_id,nullzero"`
-	BlockingReason   string `bun:"blocking_reason,nullzero"`
-	TargetHost       string `bun:"target_host,nullzero"`
-	TargetPort       int    `bun:"target_port"`
-	ProbedAt         string `bun:"probed_at"`
+	ChainID            string `bun:"chain_id,pk"`
+	Status             string `bun:"status"`
+	Message            string `bun:"message"`
+	ResolvedHopsJSON   string `bun:"resolved_hops_json"`
+	BlockingGroupIndex int    `bun:"blocking_group_index"`
+	BlockingNodeID     string `bun:"blocking_node_id,nullzero"`
+	BlockingReason     string `bun:"blocking_reason,nullzero"`
+	TargetHost         string `bun:"target_host,nullzero"`
+	TargetPort         int    `bun:"target_port"`
+	ProbedAt           string `bun:"probed_at"`
 }
 
 type TenantChainModel struct {

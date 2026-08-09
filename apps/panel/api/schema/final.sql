@@ -411,6 +411,7 @@ CREATE TABLE IF NOT EXISTS chain_probe_results (
   status VARCHAR(64) NOT NULL,
   message VARCHAR(255) NOT NULL,
   resolved_hops_json LONGTEXT NOT NULL,
+  blocking_group_index INT NOT NULL DEFAULT -1,
   blocking_node_id VARCHAR(191),
   blocking_reason VARCHAR(255),
   target_host VARCHAR(255),

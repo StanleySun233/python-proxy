@@ -103,16 +103,16 @@ type MatchValueValidation struct {
 }
 
 type ChainValidation struct {
-	Valid        bool     `json:"valid"`
-	ChainEnabled bool     `json:"chainEnabled"`
-	ChainHops    []string `json:"chainHops"`
+	Valid          bool            `json:"valid"`
+	ChainEnabled   bool            `json:"chainEnabled"`
+	ChainHopGroups []ChainHopGroup `json:"chainHopGroups"`
 }
 
 type ScopeValidation struct {
-	Valid                bool   `json:"valid"`
-	ScopeExists          bool   `json:"scopeExists"`
-	ScopeOwnerNodeID     string `json:"scopeOwnerNodeId"`
-	MatchesChainFinalHop bool   `json:"matchesChainFinalHop"`
+	Valid                bool     `json:"valid"`
+	ScopeExists          bool     `json:"scopeExists"`
+	ScopeOwnerNodeIDs    []string `json:"scopeOwnerNodeIds"`
+	MatchesChainFinalHop bool     `json:"matchesChainFinalHop"`
 }
 
 type RouteRuleValidationResult struct {

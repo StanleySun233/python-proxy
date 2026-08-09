@@ -86,28 +86,32 @@ type ExtensionTopologyHop struct {
 	Transport  string `json:"transport"`
 }
 
+type ExtensionTopologyGroup struct {
+	Candidates []ExtensionTopologyHop `json:"candidates"`
+}
+
 type ExtensionAccessPath struct {
-	ID             string                 `json:"id"`
-	Name           string                 `json:"name"`
-	ChainID        string                 `json:"chainId"`
-	Mode           string                 `json:"mode"`
-	Protocol       string                 `json:"protocol"`
-	ServiceType    string                 `json:"serviceType"`
-	TargetNodeID   string                 `json:"targetNodeId"`
-	EntryNodeID    string                 `json:"entryNodeId"`
-	RelayNodeIDs   []string               `json:"relayNodeIds"`
-	ListenHost     string                 `json:"listenHost"`
-	ListenPort     int                    `json:"listenPort"`
-	TargetProtocol string                 `json:"targetProtocol"`
-	TargetHost     string                 `json:"targetHost"`
-	TargetPort     int                    `json:"targetPort"`
-	TargetSNI      string                 `json:"targetSni"`
-	TLSMode        string                 `json:"tlsMode"`
-	AuthMode       string                 `json:"authMode"`
-	Enabled        bool                   `json:"enabled"`
-	Options        map[string]string      `json:"options"`
-	Topology       []ExtensionTopologyHop `json:"topology"`
-	Health         ExtensionPathHealth    `json:"health"`
+	ID             string                   `json:"id"`
+	Name           string                   `json:"name"`
+	ChainID        string                   `json:"chainId"`
+	Mode           string                   `json:"mode"`
+	Protocol       string                   `json:"protocol"`
+	ServiceType    string                   `json:"serviceType"`
+	TargetNodeID   string                   `json:"targetNodeId"`
+	EntryNodeID    string                   `json:"entryNodeId"`
+	RelayNodeIDs   []string                 `json:"relayNodeIds"`
+	ListenHost     string                   `json:"listenHost"`
+	ListenPort     int                      `json:"listenPort"`
+	TargetProtocol string                   `json:"targetProtocol"`
+	TargetHost     string                   `json:"targetHost"`
+	TargetPort     int                      `json:"targetPort"`
+	TargetSNI      string                   `json:"targetSni"`
+	TLSMode        string                   `json:"tlsMode"`
+	AuthMode       string                   `json:"authMode"`
+	Enabled        bool                     `json:"enabled"`
+	Options        map[string]string        `json:"options"`
+	TopologyGroups []ExtensionTopologyGroup `json:"topologyGroups"`
+	Health         ExtensionPathHealth      `json:"health"`
 }
 
 type ExtensionPathHealth struct {
@@ -117,16 +121,16 @@ type ExtensionPathHealth struct {
 }
 
 type ExtensionRoute struct {
-	ID               string                 `json:"id"`
-	Priority         int                    `json:"priority"`
-	MatchType        string                 `json:"matchType"`
-	MatchValue       string                 `json:"matchValue"`
-	ActionType       string                 `json:"actionType"`
-	ChainID          string                 `json:"chainId"`
-	AccessPathID     string                 `json:"accessPathId"`
-	DestinationScope string                 `json:"destinationScope"`
-	Enabled          bool                   `json:"enabled"`
-	Topology         []ExtensionTopologyHop `json:"topology"`
+	ID               string                   `json:"id"`
+	Priority         int                      `json:"priority"`
+	MatchType        string                   `json:"matchType"`
+	MatchValue       string                   `json:"matchValue"`
+	ActionType       string                   `json:"actionType"`
+	ChainID          string                   `json:"chainId"`
+	AccessPathID     string                   `json:"accessPathId"`
+	DestinationScope string                   `json:"destinationScope"`
+	Enabled          bool                     `json:"enabled"`
+	TopologyGroups   []ExtensionTopologyGroup `json:"topologyGroups"`
 }
 
 type ExtensionRouteEvaluation struct {

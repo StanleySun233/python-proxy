@@ -63,9 +63,9 @@ type HopConnectivity struct {
 }
 
 type ScopeOwnership struct {
-	Scope       string `json:"scope"`
-	OwnerNodeID string `json:"ownerNodeId"`
-	Valid       bool   `json:"valid"`
+	Scope        string   `json:"scope"`
+	OwnerNodeIDs []string `json:"ownerNodeIds"`
+	Valid        bool     `json:"valid"`
 }
 
 type ChainValidationResult struct {
