@@ -19,16 +19,23 @@ func (s *MySQLStore) proxyRepository() proxyRepository {
 	return proxyRepository{db: s.bunDB, raw: s.db}
 }
 
-func (r proxyRepository) listChainHops(ctx context.Context, chainID string) ([]string, error) {
+func (r proxyRepository) listChainHopGroups(ctx context.Context, chainID string) ([]proxy.ChainHopGroup, error) {
 	var hops []ChainHopModel
-	if err := r.db.NewSelect().Model(&hops).Where("chain_id = ?", chainID).OrderExpr("hop_index").Scan(ctx); err != nil {
+	if err := r.db.NewSelect().Model(&hops).Where("chain_id = ?", chainID).OrderExpr("hop_index, candidate_index").Scan(ctx); err != nil {
 		return nil, err
 	}
-	nodeIDs := make([]string, 0, len(hops))
-	for _, hop := range hops {
-		nodeIDs = append(nodeIDs, hop.NodeID)
+	return groupChainHopModels(hops), nil
+}
+
+func groupChainHopModels(models []ChainHopModel) []proxy.ChainHopGroup {
+	groups := make([]proxy.ChainHopGroup, 0)
+	for _, model := range models {
+		for len(groups) <= model.HopIndex {
+			groups = append(groups, proxy.ChainHopGroup{Candidates: []string{}})
+		}
+		groups[model.HopIndex].Candidates = append(groups[model.HopIndex].Candidates, model.NodeID)
 	}
-	return nodeIDs, nil
+	return groups
 }
 
 func (r proxyRepository) listChains(ctx context.Context) ([]proxy.Chain, error) {
@@ -80,7 +87,7 @@ func (r proxyRepository) chainModels(ctx context.Context, models []ChainModel) (
 }
 
 func (r proxyRepository) chainModel(ctx context.Context, model ChainModel) (proxy.Chain, error) {
-	hops, err := r.listChainHops(ctx, model.ID)
+	hopGroups, err := r.listChainHopGroups(ctx, model.ID)
 	if err != nil {
 		return proxy.Chain{}, err
 	}
@@ -91,7 +98,7 @@ func (r proxyRepository) chainModel(ctx context.Context, model ChainModel) (prox
 		Name:             model.Name,
 		DestinationScope: model.DestinationScope,
 		Enabled:          model.Enabled,
-		Hops:             hops,
+		HopGroups:        hopGroups,
 	}, nil
 }
 
@@ -102,7 +109,7 @@ func (r proxyRepository) createChain(ctx context.Context, item proxy.Chain, tena
 		if _, err := tx.NewInsert().Model(&model).Exec(ctx); err != nil {
 			return err
 		}
-		if err := insertChainHops(ctx, tx, item.ID, item.Hops); err != nil {
+		if err := insertChainHopGroups(ctx, tx, item.ID, item.HopGroups); err != nil {
 			return err
 		}
 		if tenantID != "" {
@@ -130,7 +137,7 @@ func (r proxyRepository) updateChain(ctx context.Context, chainID string, input 
 		if _, err := tx.NewDelete().Model((*ChainHopModel)(nil)).Where("chain_id = ?", chainID).Exec(ctx); err != nil {
 			return err
 		}
-		return insertChainHops(ctx, tx, chainID, input.Hops)
+		return insertChainHopGroups(ctx, tx, chainID, input.HopGroups)
 	})
 	if err != nil {
 		return proxy.Chain{}, err
@@ -146,13 +153,15 @@ func (r proxyRepository) getChain(ctx context.Context, chainID string) (proxy.Ch
 	return r.chainModel(ctx, model)
 }
 
-func insertChainHops(ctx context.Context, tx bun.Tx, chainID string, hops []string) error {
-	if len(hops) == 0 {
+func insertChainHopGroups(ctx context.Context, tx bun.Tx, chainID string, groups []proxy.ChainHopGroup) error {
+	if len(groups) == 0 {
 		return nil
 	}
-	models := make([]ChainHopModel, 0, len(hops))
-	for index, hop := range hops {
-		models = append(models, ChainHopModel{ChainID: chainID, HopIndex: index, NodeID: hop})
+	models := make([]ChainHopModel, 0)
+	for hopIndex, group := range groups {
+		for candidateIndex, nodeID := range group.Candidates {
+			models = append(models, ChainHopModel{ChainID: chainID, HopIndex: hopIndex, CandidateIndex: candidateIndex, NodeID: nodeID})
+		}
 	}
 	_, err := tx.NewInsert().Model(&models).Exec(ctx)
 	return err

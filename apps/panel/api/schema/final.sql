@@ -133,8 +133,9 @@ CREATE TABLE IF NOT EXISTS chains (
 CREATE TABLE IF NOT EXISTS chain_hops (
   chain_id VARCHAR(191) NOT NULL,
   hop_index INT NOT NULL,
+  candidate_index INT NOT NULL,
   node_id VARCHAR(191) NOT NULL,
-  PRIMARY KEY (chain_id, hop_index),
+  PRIMARY KEY (chain_id, hop_index, candidate_index),
   CONSTRAINT fk_chain_hops_chain_id FOREIGN KEY (chain_id) REFERENCES chains(id),
   CONSTRAINT fk_chain_hops_node_id FOREIGN KEY (node_id) REFERENCES nodes(id)
 );

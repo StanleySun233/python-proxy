@@ -8,12 +8,12 @@ import (
 	"github.com/StanleySun233/python-proxy/apps/panel/api/internal/store/deleteplan"
 )
 
-func (s *MySQLStore) loadChainHops(chainID string) []string {
-	hops, err := s.proxyRepository().listChainHops(context.Background(), chainID)
+func (s *MySQLStore) loadChainHopGroups(chainID string) []proxy.ChainHopGroup {
+	groups, err := s.proxyRepository().listChainHopGroups(context.Background(), chainID)
 	if err != nil {
 		return nil
 	}
-	return hops
+	return groups
 }
 
 func (s *MySQLStore) ListChains() []proxy.Chain {
@@ -52,7 +52,7 @@ func (s *MySQLStore) CreateChain(input proxy.CreateChainInput) (proxy.Chain, err
 	if err != nil {
 		return proxy.Chain{}, err
 	}
-	item := proxy.Chain{ID: chainID, CreateID: ownerID, OwnerID: ownerID, Name: input.Name, DestinationScope: input.DestinationScope, Enabled: true, Hops: input.Hops}
+	item := proxy.Chain{ID: chainID, CreateID: ownerID, OwnerID: ownerID, Name: input.Name, DestinationScope: input.DestinationScope, Enabled: true, HopGroups: input.HopGroups}
 	if err := s.proxyRepository().createChain(context.Background(), item, ""); err != nil {
 		return proxy.Chain{}, err
 	}
@@ -64,7 +64,7 @@ func (s *MySQLStore) CreateChainForTenant(tenantCtx domain.TenantAuthContext, in
 	if err != nil {
 		return proxy.Chain{}, err
 	}
-	item := proxy.Chain{ID: chainID, CreateID: tenantCtx.Account.ID, OwnerID: tenantCtx.Account.ID, Name: input.Name, DestinationScope: input.DestinationScope, Enabled: true, Hops: input.Hops}
+	item := proxy.Chain{ID: chainID, CreateID: tenantCtx.Account.ID, OwnerID: tenantCtx.Account.ID, Name: input.Name, DestinationScope: input.DestinationScope, Enabled: true, HopGroups: input.HopGroups}
 	if err := s.proxyRepository().createChain(context.Background(), item, tenantCtx.ActiveTenant.TenantID); err != nil {
 		return proxy.Chain{}, err
 	}

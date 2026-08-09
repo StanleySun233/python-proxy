@@ -35,7 +35,7 @@ func (s *MySQLStore) ensureDefaultAccessPathsForTenant(tenantCtx domain.TenantAu
 		pathsByChainID[path.ChainID] = true
 	}
 	for _, chain := range chains {
-		if pathsByChainID[chain.ID] || len(chain.Hops) == 0 {
+		if pathsByChainID[chain.ID] || len(chain.HopGroups) == 0 {
 			continue
 		}
 		input, ok := defaultAccessPathInput(chain, nodeByID)
@@ -52,11 +52,12 @@ func (s *MySQLStore) ensureDefaultAccessPathsForTenant(tenantCtx domain.TenantAu
 }
 
 func defaultAccessPathInput(chain proxy.Chain, nodeByID map[string]domain.Node) (domain.CreateNodeAccessPathInput, bool) {
-	if len(chain.Hops) == 0 {
+	hops := primaryChainNodeIDs(chain.HopGroups)
+	if len(hops) == 0 {
 		return domain.CreateNodeAccessPathInput{}, false
 	}
-	entryNode, entryOK := nodeByID[chain.Hops[0]]
-	targetNode, targetOK := nodeByID[chain.Hops[len(chain.Hops)-1]]
+	entryNode, entryOK := nodeByID[hops[0]]
+	targetNode, targetOK := nodeByID[hops[len(hops)-1]]
 	if !entryOK || !targetOK {
 		return domain.CreateNodeAccessPathInput{}, false
 	}
@@ -76,7 +77,7 @@ func defaultAccessPathInput(chain proxy.Chain, nodeByID map[string]domain.Node) 
 		ServiceType:    domain.AccessServiceHTTPForwardProxy,
 		TargetNodeID:   targetNode.ID,
 		EntryNodeID:    entryNode.ID,
-		RelayNodeIDs:   relayNodeIDs(chain.Hops),
+		RelayNodeIDs:   relayNodeIDs(hops),
 		ListenHost:     listenHost,
 		ListenPort:     listenPort,
 		TargetProtocol: domain.AccessProtocolHTTP,
@@ -84,6 +85,17 @@ func defaultAccessPathInput(chain proxy.Chain, nodeByID map[string]domain.Node) 
 		AuthMode:       domain.AccessAuthProxyToken,
 		Options:        map[string]string{},
 	}, true
+}
+
+func primaryChainNodeIDs(groups []proxy.ChainHopGroup) []string {
+	nodeIDs := make([]string, 0, len(groups))
+	for _, group := range groups {
+		if len(group.Candidates) == 0 {
+			return nil
+		}
+		nodeIDs = append(nodeIDs, group.Candidates[0])
+	}
+	return nodeIDs
 }
 
 func relayNodeIDs(hops []string) []string {

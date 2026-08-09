@@ -18,9 +18,10 @@ type ChainModel struct {
 type ChainHopModel struct {
 	bun.BaseModel `bun:"table:chain_hops"`
 
-	ChainID  string `bun:"chain_id,pk"`
-	HopIndex int    `bun:"hop_index,pk"`
-	NodeID   string `bun:"node_id"`
+	ChainID        string `bun:"chain_id,pk"`
+	HopIndex       int    `bun:"hop_index,pk"`
+	CandidateIndex int    `bun:"candidate_index,pk"`
+	NodeID         string `bun:"node_id"`
 }
 
 type RouteRuleModel struct {

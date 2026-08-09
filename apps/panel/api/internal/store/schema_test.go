@@ -19,6 +19,14 @@ func TestInitSchemaRunsFinalSchemaForEmptyDatabase(t *testing.T) {
 	findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS roles")
 	findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS tenant_access_paths")
 	findTokenSecurityCall(t, record, "INSERT IGNORE INTO field_enum")
+	chainHops := findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS chain_hops")
+	normalizedChainHops := normalizedQuery(chainHops.Query)
+	if !strings.Contains(normalizedChainHops, "candidate_index INT NOT NULL") {
+		t.Fatalf("chain_hops missing candidate_index: %s", normalizedChainHops)
+	}
+	if !strings.Contains(normalizedChainHops, "PRIMARY KEY (chain_id, hop_index, candidate_index)") {
+		t.Fatalf("chain_hops primary key does not preserve candidate priority: %s", normalizedChainHops)
+	}
 }
 
 func TestInitSchemaSkipsNonEmptyDatabase(t *testing.T) {

@@ -13,7 +13,7 @@ func TestDefaultAccessPathInputUsesPublicEntryNode(t *testing.T) {
 		"edge":  {ID: "edge", PublicHost: "103.214.172.211", PublicPort: 2988},
 		"relay": {ID: "relay"},
 	}
-	chain := proxy.Chain{ID: "chain", Name: "hk2astar", Hops: []string{"edge", "relay"}}
+	chain := proxy.Chain{ID: "chain", Name: "hk2astar", HopGroups: []proxy.ChainHopGroup{{Candidates: []string{"edge"}}, {Candidates: []string{"relay"}}}}
 
 	got, ok := defaultAccessPathInput(chain, nodes)
 	if !ok {
@@ -47,7 +47,7 @@ func TestDefaultAccessPathInputKeepsIntermediateRelayNodes(t *testing.T) {
 		"relay2": {ID: "relay2"},
 		"target": {ID: "target"},
 	}
-	chain := proxy.Chain{ID: "chain", Name: "multi-hop", Hops: []string{"edge", "relay1", "relay2", "target"}}
+	chain := proxy.Chain{ID: "chain", Name: "multi-hop", HopGroups: []proxy.ChainHopGroup{{Candidates: []string{"edge"}}, {Candidates: []string{"relay1"}}, {Candidates: []string{"relay2"}}, {Candidates: []string{"target"}}}}
 
 	got, ok := defaultAccessPathInput(chain, nodes)
 	if !ok {
@@ -66,7 +66,7 @@ func TestDefaultAccessPathInputRejectsMissingHopNode(t *testing.T) {
 	nodes := map[string]domain.Node{
 		"edge": {ID: "edge", PublicHost: "203.0.113.10", PublicPort: 2988},
 	}
-	chain := proxy.Chain{ID: "chain", Name: "broken", Hops: []string{"edge", "missing"}}
+	chain := proxy.Chain{ID: "chain", Name: "broken", HopGroups: []proxy.ChainHopGroup{{Candidates: []string{"edge"}}, {Candidates: []string{"missing"}}}}
 
 	if _, ok := defaultAccessPathInput(chain, nodes); ok {
 		t.Fatalf("defaultAccessPathInput ok = true")

@@ -54,22 +54,29 @@ func Compile(nodes []domain.Node, links []domain.NodeLink, chains []proxy.Chain,
 		if !chain.Enabled {
 			continue
 		}
-		if len(chain.Hops) == 0 {
-			return "", fmt.Errorf("chain %s has no hops", chain.ID)
+		if len(chain.HopGroups) == 0 {
+			return "", fmt.Errorf("chain %s has no hop groups", chain.ID)
 		}
 		seen := map[string]struct{}{}
-		for _, hop := range chain.Hops {
-			if _, ok := nodeSet[hop]; !ok {
-				return "", fmt.Errorf("chain %s references unknown_or_disabled_node %s", chain.ID, hop)
+		for groupIndex, group := range chain.HopGroups {
+			if len(group.Candidates) == 0 {
+				return "", fmt.Errorf("chain %s has empty hop group %d", chain.ID, groupIndex)
 			}
-			if _, ok := seen[hop]; ok {
-				return "", fmt.Errorf("chain %s contains loop at %s", chain.ID, hop)
+			for _, candidate := range group.Candidates {
+				if _, ok := nodeSet[candidate]; !ok {
+					return "", fmt.Errorf("chain %s references unknown_or_disabled_node %s", chain.ID, candidate)
+				}
+				if _, ok := seen[candidate]; ok {
+					return "", fmt.Errorf("chain %s contains duplicate node %s", chain.ID, candidate)
+				}
+				seen[candidate] = struct{}{}
 			}
-			seen[hop] = struct{}{}
 		}
-		lastHop := chain.Hops[len(chain.Hops)-1]
-		if nodeSet[lastHop].ScopeKey != chain.DestinationScope {
-			return "", fmt.Errorf("chain %s destination_scope_mismatch", chain.ID)
+		lastGroup := chain.HopGroups[len(chain.HopGroups)-1]
+		for _, candidate := range lastGroup.Candidates {
+			if nodeSet[candidate].ScopeKey != chain.DestinationScope {
+				return "", fmt.Errorf("chain %s destination_scope_mismatch", chain.ID)
+			}
 		}
 	}
 	chainSet := make(map[string]struct{}, len(chains))
@@ -154,9 +161,14 @@ func CompileForNode(nodeID string, nodes []domain.Node, links []domain.NodeLink,
 	for _, chain := range snapshot.Chains {
 		include := chain.DestinationScope == currentScope
 		if !include {
-			for _, hop := range chain.Hops {
-				if hop == nodeID {
-					include = true
+			for _, group := range chain.HopGroups {
+				for _, candidate := range group.Candidates {
+					if candidate == nodeID {
+						include = true
+						break
+					}
+				}
+				if include {
 					break
 				}
 			}

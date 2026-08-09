@@ -1,26 +1,34 @@
 package proxy
 
 type Chain struct {
-	ID               string   `json:"id"`
-	CreateID         string   `json:"createId"`
-	OwnerID          string   `json:"ownerId"`
-	Name             string   `json:"name"`
-	DestinationScope string   `json:"destinationScope"`
-	Enabled          bool     `json:"enabled"`
-	Hops             []string `json:"hops"`
-	Permission       string   `json:"permission,omitempty"`
+	ID               string          `json:"id"`
+	CreateID         string          `json:"createId"`
+	OwnerID          string          `json:"ownerId"`
+	Name             string          `json:"name"`
+	DestinationScope string          `json:"destinationScope"`
+	Enabled          bool            `json:"enabled"`
+	HopGroups        []ChainHopGroup `json:"hopGroups"`
+	Permission       string          `json:"permission,omitempty"`
 }
 
 type ChainWithDetails struct {
-	ID               string           `json:"id"`
-	CreateID         string           `json:"createId"`
-	OwnerID          string           `json:"ownerId"`
-	Name             string           `json:"name"`
-	DestinationScope string           `json:"destinationScope"`
-	Enabled          bool             `json:"enabled"`
-	Hops             []string         `json:"hops"`
-	HopDetails       []ChainHopDetail `json:"hopDetails"`
-	Permission       string           `json:"permission,omitempty"`
+	ID               string                `json:"id"`
+	CreateID         string                `json:"createId"`
+	OwnerID          string                `json:"ownerId"`
+	Name             string                `json:"name"`
+	DestinationScope string                `json:"destinationScope"`
+	Enabled          bool                  `json:"enabled"`
+	HopGroups        []ChainHopGroup       `json:"hopGroups"`
+	HopGroupDetails  []ChainHopGroupDetail `json:"hopGroupDetails"`
+	Permission       string                `json:"permission,omitempty"`
+}
+
+type ChainHopGroup struct {
+	Candidates []string `json:"candidates"`
+}
+
+type ChainHopGroupDetail struct {
+	Candidates []ChainHopDetail `json:"candidates"`
 }
 
 type ChainHopDetail struct {
@@ -30,22 +38,22 @@ type ChainHopDetail struct {
 }
 
 type CreateChainInput struct {
-	Name             string   `json:"name"`
-	DestinationScope string   `json:"destinationScope"`
-	Hops             []string `json:"hops"`
+	Name             string          `json:"name"`
+	DestinationScope string          `json:"destinationScope"`
+	HopGroups        []ChainHopGroup `json:"hopGroups"`
 }
 
 type UpdateChainInput struct {
-	Name             string   `json:"name"`
-	DestinationScope string   `json:"destinationScope"`
-	Hops             []string `json:"hops"`
-	Enabled          bool     `json:"enabled"`
+	Name             string          `json:"name"`
+	DestinationScope string          `json:"destinationScope"`
+	HopGroups        []ChainHopGroup `json:"hopGroups"`
+	Enabled          bool            `json:"enabled"`
 }
 
 type ValidateChainInput struct {
-	Name             string   `json:"name"`
-	Hops             []string `json:"hops"`
-	DestinationScope string   `json:"destinationScope"`
+	Name             string          `json:"name"`
+	HopGroups        []ChainHopGroup `json:"hopGroups"`
+	DestinationScope string          `json:"destinationScope"`
 }
 
 type HopConnectivity struct {
@@ -69,17 +77,17 @@ type ChainValidationResult struct {
 }
 
 type PreviewChainInput struct {
-	Name             string   `json:"name"`
-	Hops             []string `json:"hops"`
-	DestinationScope string   `json:"destinationScope"`
+	Name             string          `json:"name"`
+	HopGroups        []ChainHopGroup `json:"hopGroups"`
+	DestinationScope string          `json:"destinationScope"`
 }
 
 type CompiledChainConfig struct {
-	ChainID          string           `json:"chainId"`
-	Name             string           `json:"name"`
-	Hops             []ChainHopDetail `json:"hops"`
-	DestinationScope string           `json:"destinationScope"`
-	RoutingPath      string           `json:"routingPath"`
+	ChainID          string                `json:"chainId"`
+	Name             string                `json:"name"`
+	HopGroups        []ChainHopGroupDetail `json:"hopGroups"`
+	DestinationScope string                `json:"destinationScope"`
+	RoutingPath      string                `json:"routingPath"`
 }
 
 type ChainPreviewResult struct {
@@ -95,25 +103,27 @@ type ChainProbeHop struct {
 }
 
 type ChainProbeResult struct {
-	ChainID        string          `json:"chainId"`
-	Status         string          `json:"status"`
-	Message        string          `json:"message"`
-	ResolvedHops   []ChainProbeHop `json:"resolvedHops"`
-	BlockingNodeID string          `json:"blockingNodeId"`
-	BlockingReason string          `json:"blockingReason"`
-	TargetHost     string          `json:"targetHost"`
-	TargetPort     int             `json:"targetPort"`
-	ProbedAt       string          `json:"probedAt"`
+	ChainID            string          `json:"chainId"`
+	Status             string          `json:"status"`
+	Message            string          `json:"message"`
+	ResolvedHops       []ChainProbeHop `json:"resolvedHops"`
+	BlockingGroupIndex int             `json:"blockingGroupIndex"`
+	BlockingNodeID     string          `json:"blockingNodeId"`
+	BlockingReason     string          `json:"blockingReason"`
+	TargetHost         string          `json:"targetHost"`
+	TargetPort         int             `json:"targetPort"`
+	ProbedAt           string          `json:"probedAt"`
 }
 
 type SaveChainProbeResultInput struct {
-	ChainID        string          `json:"chainId"`
-	Status         string          `json:"status"`
-	Message        string          `json:"message"`
-	ResolvedHops   []ChainProbeHop `json:"resolvedHops"`
-	BlockingNodeID string          `json:"blockingNodeId"`
-	BlockingReason string          `json:"blockingReason"`
-	TargetHost     string          `json:"targetHost"`
-	TargetPort     int             `json:"targetPort"`
-	ProbedAt       string          `json:"probedAt"`
+	ChainID            string          `json:"chainId"`
+	Status             string          `json:"status"`
+	Message            string          `json:"message"`
+	ResolvedHops       []ChainProbeHop `json:"resolvedHops"`
+	BlockingGroupIndex int             `json:"blockingGroupIndex"`
+	BlockingNodeID     string          `json:"blockingNodeId"`
+	BlockingReason     string          `json:"blockingReason"`
+	TargetHost         string          `json:"targetHost"`
+	TargetPort         int             `json:"targetPort"`
+	ProbedAt           string          `json:"probedAt"`
 }
