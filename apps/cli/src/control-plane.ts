@@ -58,6 +58,17 @@ type TopologyHop = {
   transport: string;
 };
 
+type AccessEntrypoint = {
+  nodeId: string;
+  host: string;
+  port: number;
+  status: string;
+};
+
+type TopologyGroup = {
+  candidates: TopologyHop[];
+};
+
 type BootstrapNode = {
   id: string;
   name: string;
@@ -77,9 +88,11 @@ type AccessPathSnapshot = {
   mode: string;
   protocol: string;
   serviceType: string;
+  remoteProtocol: string;
   targetNodeId: string;
   entryNodeId: string;
   relayNodeIds: string[];
+  entrypoints: AccessEntrypoint[];
   listenHost: string;
   listenPort: number;
   targetProtocol: string;
@@ -90,7 +103,7 @@ type AccessPathSnapshot = {
   authMode: 'proxy_token';
   enabled: boolean;
   options: Record<string, string>;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
   health: {
     status: string;
     reason: string;
@@ -108,7 +121,7 @@ type RouteSnapshot = {
   accessPathId: string;
   destinationScope: string;
   enabled: boolean;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
 };
 
 type RouteEvaluationContract = {

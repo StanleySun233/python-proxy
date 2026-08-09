@@ -46,8 +46,13 @@ func TestExtensionBootstrapSnapshotsUseLatestAccessPathContract(t *testing.T) {
 			Mode:           "forward",
 			Protocol:       "http",
 			ServiceType:    "http_forward_proxy",
+			RemoteProtocol: "",
 			TargetNodeID:   "edge",
 			EntryNodeID:    "edge",
+			Entrypoints: []domain.AccessEntrypoint{
+				{NodeID: "edge", Host: "edge.example", Port: 2988, Status: "healthy"},
+				{NodeID: "standby", Host: "standby.example", Port: 2988, Status: "degraded"},
+			},
 			ListenHost:     "127.0.0.1",
 			ListenPort:     2988,
 			TargetProtocol: "http",
@@ -68,6 +73,9 @@ func TestExtensionBootstrapSnapshotsUseLatestAccessPathContract(t *testing.T) {
 	}
 	if accessPaths[0].ID != "path" || accessPaths[0].Health.Status != "ready" || len(accessPaths[0].TopologyGroups) != 1 || len(accessPaths[0].TopologyGroups[0].Candidates) != 2 || accessPaths[0].TopologyGroups[0].Candidates[1].NodeID != "standby" {
 		t.Fatalf("accessPath = %+v", accessPaths[0])
+	}
+	if len(accessPaths[0].Entrypoints) != 2 || accessPaths[0].Entrypoints[1].NodeID != "standby" {
+		t.Fatalf("entrypoints = %+v", accessPaths[0].Entrypoints)
 	}
 
 	routes := extensionRoutes(rules, paths, chainsByID, nodesByID)

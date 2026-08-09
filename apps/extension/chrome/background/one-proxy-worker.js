@@ -117,9 +117,11 @@ function normalizeAccessPath(path) {
     mode: String(path.mode || ''),
     protocol: String(path.protocol || ''),
     serviceType: String(path.serviceType || ''),
+    remoteProtocol: String(path.remoteProtocol || ''),
     targetNodeId: String(path.targetNodeId || ''),
     entryNodeId: String(path.entryNodeId || ''),
     relayNodeIds: uniqueStrings(path.relayNodeIds),
+    entrypoints: Array.isArray(path.entrypoints) ? path.entrypoints.map(normalizeEntrypoint) : [],
     listenHost: String(path.listenHost || ''),
     listenPort: Number(path.listenPort || 0),
     targetProtocol: String(path.targetProtocol || ''),
@@ -130,8 +132,23 @@ function normalizeAccessPath(path) {
     authMode: String(path.authMode || ''),
     enabled: Boolean(path.enabled),
     options: path.options && typeof path.options === 'object' ? { ...path.options } : {},
-    topology: Array.isArray(path.topology) ? path.topology.map(normalizeTopologyHop) : [],
+    topologyGroups: Array.isArray(path.topologyGroups) ? path.topologyGroups.map(normalizeTopologyGroup) : [],
     health: normalizeAccessPathHealth(path.health)
+  };
+}
+
+function normalizeEntrypoint(entrypoint) {
+  return {
+    nodeId: String(entrypoint.nodeId || ''),
+    host: String(entrypoint.host || ''),
+    port: Number(entrypoint.port || 0),
+    status: String(entrypoint.status || '')
+  };
+}
+
+function normalizeTopologyGroup(group) {
+  return {
+    candidates: Array.isArray(group && group.candidates) ? group.candidates.map(normalizeTopologyHop) : []
   };
 }
 
@@ -154,7 +171,7 @@ function normalizeRoute(route) {
     accessPathId: String(route.accessPathId || ''),
     destinationScope: String(route.destinationScope || ''),
     enabled: Boolean(route.enabled),
-    topology: Array.isArray(route.topology) ? route.topology.map(normalizeTopologyHop) : []
+    topologyGroups: Array.isArray(route.topologyGroups) ? route.topologyGroups.map(normalizeTopologyGroup) : []
   };
 }
 
@@ -289,7 +306,8 @@ function accessPathView(path, state) {
   if (!path) {
     return null;
   }
-  const entryNode = state.remote.nodes.find((node) => node.id === path.entryNodeId);
+  const entrypoint = selectedEntrypoint(path);
+  const entryNode = state.remote.nodes.find((node) => node.id === entrypoint?.nodeId);
   const disabledIds = uniqueStrings(state.accessPathSwitches && state.accessPathSwitches.disabledAccessPathIds);
   const userEnabled = !disabledIds.includes(path.id);
   return {
@@ -297,11 +315,17 @@ function accessPathView(path, state) {
     userEnabled,
     effectiveEnabled: Boolean(path.enabled && userEnabled),
     proxyScheme: path.protocol === 'https' ? 'HTTPS' : 'PROXY',
-    proxyHost: path.listenHost,
-    proxyPort: path.listenPort,
-    entryNodeName: (entryNode && entryNode.name) || path.entryNodeId,
-    entryNodeId: path.entryNodeId
+    proxyHost: entrypoint?.host || '',
+    proxyPort: entrypoint?.port || 0,
+    entryNodeName: (entryNode && entryNode.name) || entrypoint?.nodeId || '',
+    entryNodeId: entrypoint?.nodeId || ''
   };
+}
+
+function selectedEntrypoint(path) {
+  return (path && Array.isArray(path.entrypoints)
+    ? path.entrypoints.find((entrypoint) => entrypoint.status === 'healthy' && entrypoint.host && entrypoint.port > 0)
+    : null) || null;
 }
 
 function getState() {
@@ -501,10 +525,14 @@ function applyRouteAction(state, route, parsed) {
     return {
       ...base,
       mode: 'proxy',
-      topology: route.topology.length > 0 ? route.topology : accessPath.topology
+      topology: primaryTopology(route.topologyGroups.length > 0 ? route.topologyGroups : accessPath.topologyGroups)
     };
   }
   return { ...base, mode: 'deny', denyReason: 'route_denied' };
+}
+
+function primaryTopology(groups) {
+  return (groups || []).flatMap((group) => group.candidates.slice(0, 1));
 }
 
 function parseTargetUrl(value) {
@@ -610,13 +638,13 @@ function isLoopbackHost(host) {
 }
 
 function isUsableAccessPath(accessPath) {
+  const entrypoint = selectedEntrypoint(accessPath);
   return Boolean(accessPath &&
     accessPath.enabled &&
     accessPath.effectiveEnabled !== false &&
     accessPath.authMode === 'proxy_token' &&
     accessPath.serviceType === 'http_forward_proxy' &&
-    accessPath.listenHost &&
-    accessPath.listenPort > 0 &&
+    entrypoint &&
     (!accessPath.health || accessPath.health.status !== 'unavailable'));
 }
 
@@ -624,8 +652,9 @@ function accessPathProxyTarget(accessPath) {
   if (!isUsableAccessPath(accessPath)) {
     return '';
   }
+  const entrypoint = selectedEntrypoint(accessPath);
   const scheme = accessPath.protocol === 'https' ? 'HTTPS' : 'PROXY';
-  return `${scheme} ${accessPath.listenHost}:${accessPath.listenPort}`;
+  return `${scheme} ${entrypoint.host}:${entrypoint.port}`;
 }
 
 function urlHostname(value) {
@@ -1136,12 +1165,13 @@ function runProxyMonitor() {
 
 function runProxyProbes(state, targetUrl, route) {
   const accessPath = route && route.accessPathId ? accessPathById(state, route.accessPathId) : null;
+  const entrypoint = selectedEntrypoint(accessPath);
   const parsed = parseTargetUrl(targetUrl);
-  if (!state.enabled || !accessPath || !accessPath.listenHost || !accessPath.listenPort || !route || route.mode !== 'proxy') {
+  if (!state.enabled || !accessPath || !entrypoint || !route || route.mode !== 'proxy') {
     return Promise.resolve(probeProtocols().map((protocol) => ({ protocol, status: 'skipped', latencyMs: 0, message: 'proxy_not_applied' })));
   }
   const remainingHopNodeIds = (route.topology || []).map((node) => node.id).filter(Boolean).slice(1);
-  const endpoint = `http://${accessPath.listenHost}:${accessPath.listenPort}/api/control/relay/probe`;
+  const endpoint = `http://${entrypoint.host}:${entrypoint.port}/api/control/relay/probe`;
   return Promise.all(probeProtocols().map((protocol) => runNodeProbe(state, endpoint, {
     protocol,
     remainingHopNodeIds,
@@ -1490,10 +1520,11 @@ function accessPathForRoute(state, route) {
 }
 
 function accessPathProbeBaseUrl(accessPath) {
-  if (!accessPath || !accessPath.listenHost || !accessPath.listenPort) {
+  const entrypoint = selectedEntrypoint(accessPath);
+  if (!entrypoint) {
     throw new Error('status_bubble_access_path_proxy_required');
   }
-  return `http://${accessPath.listenHost}:${accessPath.listenPort}`;
+  return `http://${entrypoint.host}:${entrypoint.port}`;
 }
 
 function entryProbeUrl(accessPath) {
@@ -1512,7 +1543,8 @@ function measureEntryLatency(accessPath) {
 }
 
 function routeTopology(accessPath, route) {
-  const topology = Array.isArray(route.topology) && route.topology.length > 0 ? route.topology : (accessPath && Array.isArray(accessPath.topology) ? accessPath.topology : []);
+  const groups = Array.isArray(route.topologyGroups) && route.topologyGroups.length > 0 ? route.topologyGroups : (accessPath && Array.isArray(accessPath.topologyGroups) ? accessPath.topologyGroups : []);
+  const topology = groups.flatMap((group) => group.candidates.slice(0, 1));
   if (topology.length > 0) {
     return topology;
   }
@@ -1523,11 +1555,12 @@ function routeTopology(accessPath, route) {
 }
 
 function pathHealthKey(accessPath, route) {
+  const entrypoint = selectedEntrypoint(accessPath);
   const topologyIds = routeTopology(accessPath, route).map((node) => node.id).filter(Boolean).join('>');
   return [
     accessPath.id || '',
-    accessPath.listenHost || '',
-    accessPath.listenPort || '',
+    entrypoint?.host || '',
+    entrypoint?.port || '',
     topologyIds,
     route.protocol || '',
     route.host || '',
@@ -2224,7 +2257,9 @@ function proxyAuthTargetsFrom(state) {
   return new Set((state.remote.accessPaths || [])
     .map((path) => accessPathById(state, path.id))
     .filter(isUsableAccessPath)
-    .map((path) => proxyTargetKey(path.listenHost, path.listenPort)));
+    .map((path) => selectedEntrypoint(path))
+    .filter(Boolean)
+    .map((entrypoint) => proxyTargetKey(entrypoint.host, entrypoint.port)));
 }
 
 function updateProxyAuthCache(state) {

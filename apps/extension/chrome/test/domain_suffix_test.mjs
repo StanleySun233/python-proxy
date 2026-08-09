@@ -35,6 +35,7 @@ function stateWithDomainSuffixRoute(matchValue) {
           targetNodeId: 'node-1',
           entryNodeId: 'node-1',
           relayNodeIds: [],
+          entrypoints: [{nodeId: 'node-1', host: '127.0.0.1', port: 18080, status: 'healthy'}],
           listenHost: '127.0.0.1',
           listenPort: 18080,
           targetProtocol: 'http',
@@ -45,7 +46,7 @@ function stateWithDomainSuffixRoute(matchValue) {
           authMode: 'proxy_token',
           enabled: true,
           options: {},
-          topology: [{ id: 'node-1', name: 'Node 1', mode: 'edge' }],
+          topologyGroups: [{candidates: [{ id: 'node-1', name: 'Node 1', mode: 'edge' }]}],
           health: { status: 'available', reason: '', checkedAt: '' }
         }
       ],
@@ -60,7 +61,7 @@ function stateWithDomainSuffixRoute(matchValue) {
           accessPathId: 'path-1',
           destinationScope: '',
           enabled: true,
-          topology: []
+          topologyGroups: []
         }
       ]
     }
@@ -75,7 +76,8 @@ function stateWithParallelAccessPaths(disabledAccessPathIds = []) {
     id: 'path-2',
     name: 'Path 2',
     chainId: 'chain-2',
-    listenPort: 18081
+    listenPort: 18081,
+    entrypoints: [{nodeId: 'node-1', host: '127.0.0.1', port: 18081, status: 'healthy'}]
   });
   state.remote.routes.push({
     id: 'route-2',
@@ -87,7 +89,7 @@ function stateWithParallelAccessPaths(disabledAccessPathIds = []) {
     accessPathId: 'path-2',
     destinationScope: '',
     enabled: true,
-    topology: []
+    topologyGroups: []
   });
   return state;
 }
@@ -206,7 +208,7 @@ test('direct and deny routes do not depend on access path switches', () => {
     accessPathId: '',
     destinationScope: '',
     enabled: true,
-    topology: []
+    topologyGroups: []
   }, {
     id: 'route-deny',
     priority: 0,
@@ -217,7 +219,7 @@ test('direct and deny routes do not depend on access path switches', () => {
     accessPathId: '',
     destinationScope: '',
     enabled: true,
-    topology: []
+    topologyGroups: []
   });
 
   assert.equal(routePreviewForHost(state, 'api.direct.example').mode, 'direct');

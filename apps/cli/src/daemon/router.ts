@@ -14,16 +14,28 @@ type TopologyHop = {
   transport: string;
 };
 
+type AccessEntrypoint = {
+  nodeId: string;
+  host: string;
+  port: number;
+  status: string;
+};
+
+type TopologyGroup = {
+  candidates: TopologyHop[];
+};
+
 type AccessPathSnapshot = {
   id: string;
   name: string;
   chainId: string;
   protocol: string;
   entryNodeId: string;
+  entrypoints: AccessEntrypoint[];
   listenHost: string;
   listenPort: number;
   enabled: boolean;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
 };
 
 type RouteSnapshot = {
@@ -35,7 +47,7 @@ type RouteSnapshot = {
   chainId: string;
   accessPathId: string;
   enabled: boolean;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
 };
 
 type LatestConfig = OneProxyConfig & {
@@ -135,6 +147,9 @@ export function resolveRoute(input: RouteResolverInput): RouteResult {
   if (!accessPath) {
     return routeResult(input, target, 'deny', 'policy', route, undefined, 'access_path_unavailable');
   }
+  if (!selectEntrypoint(accessPath)) {
+    return routeResult(input, target, 'deny', 'policy', route, accessPath, 'node_unavailable');
+  }
   return routeResult(input, target, 'proxy', 'policy', route, accessPath);
 }
 
@@ -206,17 +221,25 @@ function activeAccessPath(input: RouteResolverInput): AccessPathSnapshot | undef
   const state = input.state as LatestState;
   const selectedId = config.activeAccessPathId ?? state.bootstrap?.accessPathId;
   const paths = accessPaths(input.state);
-  return paths.find((accessPath) => accessPath.enabled && accessPath.id === selectedId) || paths.find((accessPath) => accessPath.enabled);
+  return paths.find((accessPath) => accessPath.enabled && accessPath.id === selectedId && selectEntrypoint(accessPath) !== null) || paths.find((accessPath) => accessPath.enabled && selectEntrypoint(accessPath) !== null);
 }
 
 function topologyFromAccessPath(accessPath: AccessPathSnapshot): NonNullable<RouteResult['topology']> {
+  const entrypoint = selectEntrypoint(accessPath);
+  if (!entrypoint) {
+    throw new Error('node_unavailable');
+  }
   return {
-    entryNodeId: accessPath.entryNodeId,
-    entryHost: accessPath.listenHost,
-    entryPort: accessPath.listenPort,
+    entryNodeId: entrypoint.nodeId,
+    entryHost: entrypoint.host,
+    entryPort: entrypoint.port,
     protocol: accessPath.protocol,
-    hops: accessPath.topology
+    hops: accessPath.topologyGroups.flatMap((group) => group.candidates.slice(0, 1))
   };
+}
+
+export function selectEntrypoint(accessPath: Pick<AccessPathSnapshot, 'entrypoints'>): AccessEntrypoint | null {
+  return accessPath.entrypoints.find((entrypoint) => entrypoint.status === 'healthy' && entrypoint.host && entrypoint.port > 0) || null;
 }
 
 function parseTarget(target: string, protocol = 'https') {

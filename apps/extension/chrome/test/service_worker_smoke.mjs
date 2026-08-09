@@ -128,6 +128,7 @@ chromium.launchPersistentContext(userDataDir, {
                       targetNodeId: 'node-1',
                       entryNodeId: 'node-1',
                       relayNodeIds: [],
+                      entrypoints: [{nodeId: 'node-1', host: '127.0.0.1', port: 2988, status: 'healthy'}],
                       listenHost: '127.0.0.1',
                       listenPort: 2988,
                       targetProtocol: 'http',
@@ -138,7 +139,7 @@ chromium.launchPersistentContext(userDataDir, {
                       authMode: 'proxy_token',
                       enabled: true,
                       options: {},
-                      topology: [{
+                      topologyGroups: [{candidates: [{
                         nodeId: 'node-1',
                         nodeName: 'Node 1',
                         mode: 'edge',
@@ -146,7 +147,7 @@ chromium.launchPersistentContext(userDataDir, {
                         publicHost: '127.0.0.1',
                         publicPort: 2988,
                         transport: 'public_http'
-                      }],
+                      }]}],
                       health: { status: 'available', reason: '', checkedAt: '2026-06-04T00:00:00Z' }
                     }],
                     routes: [{
@@ -159,7 +160,7 @@ chromium.launchPersistentContext(userDataDir, {
                       accessPathId: 'path-1',
                       destinationScope: '',
                       enabled: true,
-                      topology: [{
+                      topologyGroups: [{candidates: [{
                         nodeId: 'node-1',
                         nodeName: 'Node 1',
                         mode: 'edge',
@@ -167,7 +168,7 @@ chromium.launchPersistentContext(userDataDir, {
                         publicHost: '127.0.0.1',
                         publicPort: 2988,
                         transport: 'public_http'
-                      }]
+                      }]}]
                     }],
                     routeEvaluation: {
                       defaultClientMode: 'direct',

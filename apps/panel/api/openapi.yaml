@@ -93,6 +93,55 @@ components:
           type:
             - string
             - "null"
+    ChainHopGroup:
+      type: object
+      required:
+        - candidates
+      properties:
+        candidates:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    AccessEntrypoint:
+      type: object
+      required:
+        - nodeId
+        - host
+        - port
+        - status
+      properties:
+        nodeId:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        status:
+          type: string
+    RemoteAccessDefault:
+      type: object
+      required:
+        - tenantId
+        - protocol
+        - accessPathId
+        - updatedBy
+        - updatedAt
+      properties:
+        tenantId:
+          type: string
+        protocol:
+          type: string
+          enum:
+            - ssh
+            - rdp
+        accessPathId:
+          type: string
+        updatedBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
 paths:
   /healthz:
     get:
@@ -381,6 +430,26 @@ paths:
         - controlPlaneAccessToken: []
       parameters:
         - $ref: "#/components/parameters/TenantIDHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - destinationScope
+                - hopGroups
+              properties:
+                name:
+                  type: string
+                destinationScope:
+                  type: string
+                hopGroups:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/ChainHopGroup"
       responses:
         "201":
           description: Envelope chain created response
@@ -390,6 +459,22 @@ paths:
         - controlPlaneAccessToken: []
       parameters:
         - $ref: "#/components/parameters/TenantIDHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                destinationScope:
+                  type: string
+                hopGroups:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/ChainHopGroup"
       responses:
         "200":
           description: Envelope chain updated response
@@ -401,6 +486,69 @@ paths:
       responses:
         "200":
           description: Envelope chain deleted response
+  /api/proxy/paths:
+    get:
+      security:
+        - controlPlaneAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIDHeader"
+      responses:
+        "200":
+          description: Envelope access-path list with derived entrypoints and topologyGroups
+    post:
+      security:
+        - controlPlaneAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIDHeader"
+      responses:
+        "201":
+          description: Envelope access path created response
+  /api/proxy/topology:
+    get:
+      security:
+        - controlPlaneAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIDHeader"
+      responses:
+        "200":
+          description: Envelope operational topology projection with primary and standby dependencies
+  /api/remote/defaults:
+    get:
+      security:
+        - controlPlaneAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIDHeader"
+      responses:
+        "200":
+          description: Envelope SSH and RDP tenant defaults
+  /api/remote/defaults/{protocol}:
+    put:
+      security:
+        - controlPlaneAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIDHeader"
+        - name: protocol
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - ssh
+              - rdp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accessPathId
+              properties:
+                accessPathId:
+                  type: string
+      responses:
+        "200":
+          description: Envelope updated tenant remote default
   /api/proxy/scopes:
     get:
       security:

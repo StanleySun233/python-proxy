@@ -1,4 +1,4 @@
-import { accessPathById, uniqueStrings } from './state.js';
+import { accessPathById, selectedEntrypoint, uniqueStrings } from './state.js';
 
 export function wildcardToRegExp(pattern) {
   return new RegExp(`^${String(pattern || '').replace(/[.+?^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*')}$`, 'i');
@@ -132,10 +132,14 @@ function applyRouteAction(state, route, parsed) {
     return {
       ...base,
       mode: 'proxy',
-      topology: route.topology.length > 0 ? route.topology : accessPath.topology
+      topology: primaryTopology(route.topologyGroups.length > 0 ? route.topologyGroups : accessPath.topologyGroups)
     };
   }
   return { ...base, mode: 'deny', denyReason: 'route_denied' };
+}
+
+function primaryTopology(groups) {
+  return (groups || []).flatMap((group) => group.candidates.slice(0, 1));
 }
 
 export function parseTargetUrl(value) {
@@ -241,13 +245,13 @@ function isLoopbackHost(host) {
 }
 
 export function isUsableAccessPath(accessPath) {
+  const entrypoint = selectedEntrypoint(accessPath);
   return Boolean(accessPath &&
     accessPath.enabled &&
     accessPath.effectiveEnabled !== false &&
     accessPath.authMode === 'proxy_token' &&
     accessPath.serviceType === 'http_forward_proxy' &&
-    accessPath.listenHost &&
-    accessPath.listenPort > 0 &&
+    entrypoint &&
     (!accessPath.health || accessPath.health.status !== 'unavailable'));
 }
 
@@ -255,8 +259,9 @@ export function accessPathProxyTarget(accessPath) {
   if (!isUsableAccessPath(accessPath)) {
     return '';
   }
+  const entrypoint = selectedEntrypoint(accessPath);
   const scheme = accessPath.protocol === 'https' ? 'HTTPS' : 'PROXY';
-  return `${scheme} ${accessPath.listenHost}:${accessPath.listenPort}`;
+  return `${scheme} ${entrypoint.host}:${entrypoint.port}`;
 }
 
 export function urlHostname(value) {

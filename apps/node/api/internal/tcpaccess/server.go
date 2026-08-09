@@ -36,13 +36,10 @@ type Server struct {
 }
 
 type AuthFrame struct {
-	Token               string           `json:"token"`
-	TargetHost          string           `json:"targetHost"`
-	TargetPort          int              `json:"targetPort"`
-	NextNodeID          string           `json:"nextNodeId,omitempty"`
-	RemainingHopNodeIDs []string         `json:"remainingHopNodeIds,omitempty"`
-	ChainNodeIDs        []string         `json:"chainNodeIds,omitempty"`
-	ChainCandidates     []ChainCandidate `json:"chainCandidates,omitempty"`
+	Token           string           `json:"token"`
+	TargetHost      string           `json:"targetHost"`
+	TargetPort      int              `json:"targetPort"`
+	ChainCandidates []ChainCandidate `json:"chainCandidates,omitempty"`
 }
 
 type ChainCandidate struct {
@@ -166,24 +163,7 @@ func (s *Server) connect(ctx context.Context, frame AuthFrame) (net.Conn, error)
 }
 
 func chainCandidates(frame AuthFrame) []ChainCandidate {
-	if len(frame.ChainCandidates) > 0 {
-		return append([]ChainCandidate(nil), frame.ChainCandidates...)
-	}
-	nextNodeID, remaining := chain(frame)
-	if nextNodeID == "" {
-		return nil
-	}
-	return []ChainCandidate{{NextNodeID: nextNodeID, RemainingHopNodeIDs: remaining}}
-}
-
-func chain(frame AuthFrame) (string, []string) {
-	if frame.NextNodeID != "" {
-		return frame.NextNodeID, append([]string(nil), frame.RemainingHopNodeIDs...)
-	}
-	if len(frame.ChainNodeIDs) == 0 {
-		return "", nil
-	}
-	return frame.ChainNodeIDs[0], append([]string(nil), frame.ChainNodeIDs[1:]...)
+	return append([]ChainCandidate(nil), frame.ChainCandidates...)
 }
 
 func readAuthFrame(reader *bufio.Reader) (AuthFrame, error) {

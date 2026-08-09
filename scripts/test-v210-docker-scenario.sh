@@ -198,28 +198,11 @@ wait_for_node_bound() {
 
 json_get() {
   path="$1"
-  python3 -c 'import json,sys
-obj=json.load(sys.stdin)
-for part in sys.argv[1].split("."):
-    if part == "":
-        continue
-    if isinstance(obj, list):
-        obj = obj[int(part)] if part.isdigit() and int(part) < len(obj) else None
-    elif isinstance(obj, dict):
-        obj = obj.get(part)
-    else:
-        obj = None
-    if obj is None:
-        break
-if isinstance(obj, (dict, list)):
-    print(json.dumps(obj, separators=(",", ":")))
-elif obj is not None:
-    print(obj)
-' "$path"
+  node -e 'let raw="";process.stdin.on("data",chunk=>raw+=chunk).on("end",()=>{let value=JSON.parse(raw);for(const part of process.argv[1].split(".").filter(Boolean)){value=Array.isArray(value)?value[Number(part)]:value?.[part];if(value==null)break}if(value!=null)process.stdout.write(typeof value==="object"?JSON.stringify(value):String(value))})' "$path"
 }
 
 sha256_hex() {
-  python3 -c 'import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())' "$1"
+  node -e 'process.stdout.write(require("node:crypto").createHash("sha256").update(process.argv[1]).digest("hex"))' "$1"
 }
 
 api_request() {
@@ -291,8 +274,18 @@ wait_for_pending_node() {
 }
 
 create_route_state() {
-  chain_response="$(api_request POST /proxy "$access_token" "$tenant_id" "{\"name\":\"v2.1.0 local chain\",\"destinationScope\":\"${scope_id}\",\"hops\":[\"${node_id}\"]}")"
+  chain_response="$(api_request POST /proxy "$access_token" "$tenant_id" "{\"name\":\"v2.1.0 local chain\",\"destinationScope\":\"${scope_id}\",\"hopGroups\":[{\"candidates\":[\"${node_id}\"]}]}")"
   chain_id="$(printf '%s' "$chain_response" | json_get data.id)"
+
+  http_path_response="$(api_request POST /proxy/paths "$access_token" "$tenant_id" "{\"chainId\":\"${chain_id}\",\"name\":\"HTTP access\",\"mode\":\"forward\",\"protocol\":\"http\",\"serviceType\":\"http_forward_proxy\",\"remoteProtocol\":\"\",\"listenHost\":\"127.0.0.1\",\"listenPort\":${node_http_host_port},\"targetProtocol\":\"http\",\"targetHost\":\"example.test\",\"targetPort\":80,\"targetSni\":\"\",\"tlsMode\":\"off\",\"authMode\":\"proxy_token\",\"options\":{}}")"
+  http_path_id="$(printf '%s' "$http_path_response" | json_get data.id)"
+  ssh_path_response="$(api_request POST /proxy/paths "$access_token" "$tenant_id" "{\"chainId\":\"${chain_id}\",\"name\":\"SSH access\",\"mode\":\"tcp\",\"protocol\":\"tcp\",\"serviceType\":\"tcp_access\",\"remoteProtocol\":\"ssh\",\"listenHost\":\"127.0.0.1\",\"listenPort\":${node_tcp_host_port},\"targetProtocol\":\"ssh\",\"targetHost\":\"ssh.example.test\",\"targetPort\":22,\"targetSni\":\"\",\"tlsMode\":\"off\",\"authMode\":\"proxy_token\",\"options\":{}}")"
+  ssh_path_id="$(printf '%s' "$ssh_path_response" | json_get data.id)"
+  rdp_path_response="$(api_request POST /proxy/paths "$access_token" "$tenant_id" "{\"chainId\":\"${chain_id}\",\"name\":\"RDP access\",\"mode\":\"tcp\",\"protocol\":\"tcp\",\"serviceType\":\"tcp_access\",\"remoteProtocol\":\"rdp\",\"listenHost\":\"127.0.0.1\",\"listenPort\":${node_tcp_host_port},\"targetProtocol\":\"rdp\",\"targetHost\":\"rdp.example.test\",\"targetPort\":3389,\"targetSni\":\"\",\"tlsMode\":\"off\",\"authMode\":\"proxy_token\",\"options\":{}}")"
+  rdp_path_id="$(printf '%s' "$rdp_path_response" | json_get data.id)"
+
+  api_request PUT /remote/defaults/ssh "$access_token" "$tenant_id" "{\"accessPathId\":\"${ssh_path_id}\"}" >/dev/null
+  api_request PUT /remote/defaults/rdp "$access_token" "$tenant_id" "{\"accessPathId\":\"${rdp_path_id}\"}" >/dev/null
 
   group_response="$(api_request POST /proxy/route-groups "$access_token" "$tenant_id" "{\"name\":\"v2.1.0 local routes\",\"description\":\"isolated release scenario\"}")"
   route_group_id="$(printf '%s' "$group_response" | json_get data.id)"
@@ -301,6 +294,7 @@ create_route_state() {
   route_response="$(api_request POST /proxy/routes "$access_token" "$tenant_id" "$route_body")"
   route_id="$(printf '%s' "$route_response" | json_get data.id)"
   echo "chain_created=${chain_id}"
+  echo "access_paths_created=http:${http_path_id},ssh:${ssh_path_id},rdp:${rdp_path_id}"
   echo "route_created=${route_id}"
 }
 
@@ -316,16 +310,7 @@ publish_policy() {
 
 validate_latest_bootstrap() {
   bootstrap_response="$(api_request GET /proxy/extension/bootstrap "$access_token" "$tenant_id")"
-  printf '%s' "$bootstrap_response" | python3 -c 'import json,sys
-payload=json.load(sys.stdin)["data"]
-assert payload.get("schemaVersion") == "v2.1.0", payload
-assert "groups" not in payload, payload.keys()
-assert payload.get("nodes"), payload
-assert payload.get("accessPaths"), payload
-assert payload.get("routes"), payload
-assert payload["routes"][0].get("accessPathId"), payload["routes"][0]
-print("bootstrap_schema=v2.1.0 access_paths=%d routes=%d" % (len(payload["accessPaths"]), len(payload["routes"])))
-'
+  printf '%s' "$bootstrap_response" | node -e 'let raw="";process.stdin.on("data",chunk=>raw+=chunk).on("end",()=>{const payload=JSON.parse(raw).data;if(payload.schemaVersion!=="v2.1.0"||"groups" in payload||!payload.nodes?.length||!payload.accessPaths?.length||!payload.routes?.length||!payload.routes[0].accessPathId)process.exit(1);if(!payload.accessPaths.every(path=>Array.isArray(path.entrypoints)&&Array.isArray(path.topologyGroups)))process.exit(1);console.log(`bootstrap_schema=v2.1.0 access_paths=${payload.accessPaths.length} routes=${payload.routes.length}`)})'
   proxy_token="$(printf '%s' "$bootstrap_response" | json_get data.proxyToken)"
   bootstrap_access_path_id="$(printf '%s' "$bootstrap_response" | json_get data.accessPaths.0.id)"
   bootstrap_route_id="$(printf '%s' "$bootstrap_response" | json_get data.routes.0.id)"
@@ -335,21 +320,14 @@ print("bootstrap_schema=v2.1.0 access_paths=%d routes=%d" % (len(payload["access
     return 1
   fi
   echo "bootstrap_route_access_path=ok"
+
+  defaults_response="$(api_request GET /remote/defaults "$access_token" "$tenant_id")"
+  printf '%s' "$defaults_response" | node -e 'let raw="";process.stdin.on("data",chunk=>raw+=chunk).on("end",()=>{const items=JSON.parse(raw).data;const ssh=items.find(item=>item.protocol==="ssh");const rdp=items.find(item=>item.protocol==="rdp");if(!ssh||!rdp||ssh.accessPathId===rdp.accessPathId)process.exit(1);console.log(`remote_defaults=ssh:${ssh.accessPathId},rdp:${rdp.accessPathId}`)})'
 }
 
 validate_node_policy() {
   policy_response="$(node_api_request GET /node/agent/policy "$node_access_token")"
-  printf '%s' "$policy_response" | python3 -c 'import json,sys
-envelope=json.load(sys.stdin)
-data=envelope["data"]
-payload=json.loads(data["payloadJson"])
-snapshots=payload.get("snapshots") or []
-assert snapshots, payload
-route_rules=snapshots[0]["payload"].get("routeRules") or []
-assert route_rules, snapshots[0]
-assert route_rules[0].get("accessPathId"), route_rules[0]
-print("node_policy_revision=%s access_path_id=%s routes=%d" % (data.get("policyRevisionId"), route_rules[0].get("accessPathId"), len(route_rules)))
-'
+  printf '%s' "$policy_response" | node -e 'let raw="";process.stdin.on("data",chunk=>raw+=chunk).on("end",()=>{const data=JSON.parse(raw).data;const payload=JSON.parse(data.payloadJson);const snapshots=payload.snapshots||[];const routeRules=snapshots[0]?.payload?.routeRules||[];const chains=snapshots[0]?.payload?.chains||[];if(!snapshots.length||!routeRules.length||!routeRules[0].accessPathId||!chains.length||!Array.isArray(chains[0].hopGroups)||"hops" in chains[0])process.exit(1);console.log(`node_policy_revision=${data.policyRevisionId} access_path_id=${routeRules[0].accessPathId} routes=${routeRules.length}`)})'
 }
 
 validate_proxy_token() {
@@ -365,7 +343,9 @@ run_db_evidence() {
   }
   mysql_query "SELECT id, status, enabled, public_host, public_port FROM nodes ORDER BY id;"
   mysql_query "SELECT node_id, transport_type, direction, address, status FROM node_transports ORDER BY node_id, transport_type;"
-  mysql_query "SELECT id, chain_id, entry_node_id, target_node_id, listen_port, target_host, target_port, enabled FROM node_access_paths ORDER BY id;"
+  mysql_query "SELECT id, chain_id, remote_protocol, listen_port, target_host, target_port, enabled FROM node_access_paths ORDER BY id;"
+  mysql_query "SELECT chain_id, hop_index, candidate_index, node_id FROM chain_hops ORDER BY chain_id, hop_index, candidate_index;"
+  mysql_query "SELECT tenant_id, remote_protocol, access_path_id FROM tenant_remote_access_defaults ORDER BY tenant_id, remote_protocol;"
   mysql_query "SELECT id, priority, match_type, match_value, action_type, chain_id, destination_scope, enabled FROM route_rules ORDER BY priority, id;"
   mysql_query "SELECT id, access_token_hash REGEXP '^[0-9a-f]{64}$' AS access_hash_shape, refresh_token_hash REGEXP '^[0-9a-f]{64}$' AS refresh_hash_shape FROM sessions ORDER BY id;"
   mysql_query "SELECT id, token_hash REGEXP '^[0-9a-f]{64}$' AS token_hash_shape FROM node_api_tokens ORDER BY node_id, id;"
@@ -386,7 +366,7 @@ case "$mode" in
       echo "docker_compose=missing"
     fi
     command -v curl >/dev/null 2>&1 && echo "curl=found" || echo "curl=missing"
-    command -v python3 >/dev/null 2>&1 && echo "python3=found" || echo "python3=missing"
+    command -v node >/dev/null 2>&1 && echo "node=found" || echo "node=missing"
     ;;
   build)
     ensure_docker_compose
@@ -402,8 +382,8 @@ case "$mode" in
       echo "curl is required for run mode" >&2
       exit 2
     }
-    command -v python3 >/dev/null 2>&1 || {
-      echo "python3 is required for run mode" >&2
+    command -v node >/dev/null 2>&1 || {
+      echo "node is required for run mode" >&2
       exit 2
     }
     write_compose ""

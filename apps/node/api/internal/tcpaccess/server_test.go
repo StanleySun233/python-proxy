@@ -161,10 +161,10 @@ func TestChainedTCPAccessUsesStreamOpener(t *testing.T) {
 	defer listener.Close()
 
 	conn := dialTCPAccess(t, listener.Addr().String(), AuthFrame{
-		Token:        "chain-token",
-		TargetHost:   "10.0.0.9",
-		TargetPort:   22,
-		ChainNodeIDs: []string{"node-2", "node-3"},
+		Token:           "chain-token",
+		TargetHost:      "10.0.0.9",
+		TargetPort:      22,
+		ChainCandidates: []ChainCandidate{{NextNodeID: "node-2", RemainingHopNodeIDs: []string{"node-3"}}},
 	})
 	defer conn.Close()
 

@@ -24,10 +24,10 @@ type guacamoleInstruction struct {
 }
 
 type tcpAccessAuthFrame struct {
-	Token        string   `json:"token"`
-	TargetHost   string   `json:"targetHost"`
-	TargetPort   int      `json:"targetPort"`
-	ChainNodeIDs []string `json:"chainNodeIds,omitempty"`
+	Token           string                    `json:"token"`
+	TargetHost      string                    `json:"targetHost"`
+	TargetPort      int                       `json:"targetPort"`
+	ChainCandidates []tcpAccessChainCandidate `json:"chainCandidates,omitempty"`
 }
 
 type tcpAccessResponseFrame struct {
@@ -86,28 +86,11 @@ func acceptRemoteTCPBridge(listener net.Listener, record remoteSessionRecord) {
 		return
 	}
 	defer clientConn.Close()
-	upstreamConn, err := net.DialTimeout("tcp", net.JoinHostPort(record.TCPAccessHost, strconv.Itoa(record.TCPAccessPort)), 10*time.Second)
+	upstreamConn, upstreamReader, err := openRemoteTCPUpstream(record)
 	if err != nil {
 		return
 	}
 	defer upstreamConn.Close()
-	if err := json.NewEncoder(upstreamConn).Encode(tcpAccessAuthFrame{
-		Token:        record.ProxyToken,
-		TargetHost:   record.TargetHost,
-		TargetPort:   record.TargetPort,
-		ChainNodeIDs: record.ChainNodeIDs,
-	}); err != nil {
-		return
-	}
-	upstreamReader := bufio.NewReader(upstreamConn)
-	line, err := upstreamReader.ReadString('\n')
-	if err != nil {
-		return
-	}
-	var response tcpAccessResponseFrame
-	if err := json.Unmarshal([]byte(line), &response); err != nil || response.Status != "connected" {
-		return
-	}
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
@@ -121,6 +104,45 @@ func acceptRemoteTCPBridge(listener net.Listener, record remoteSessionRecord) {
 		_ = clientConn.Close()
 	}()
 	wg.Wait()
+}
+
+func openRemoteTCPUpstream(record remoteSessionRecord) (net.Conn, *bufio.Reader, error) {
+	var lastErr error
+	for _, attempt := range record.TCPAttempts {
+		upstreamConn, err := net.DialTimeout("tcp", net.JoinHostPort(attempt.Host, strconv.Itoa(attempt.Port)), 10*time.Second)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if err := json.NewEncoder(upstreamConn).Encode(tcpAccessAuthFrame{
+			Token:           record.ProxyToken,
+			TargetHost:      record.TargetHost,
+			TargetPort:      record.TargetPort,
+			ChainCandidates: attempt.ChainCandidates,
+		}); err != nil {
+			lastErr = err
+			_ = upstreamConn.Close()
+			continue
+		}
+		upstreamReader := bufio.NewReader(upstreamConn)
+		line, err := upstreamReader.ReadString('\n')
+		if err != nil {
+			lastErr = err
+			_ = upstreamConn.Close()
+			continue
+		}
+		var response tcpAccessResponseFrame
+		if err := json.Unmarshal([]byte(line), &response); err != nil || response.Status != "connected" {
+			lastErr = errors.New("remote_tcp_access_rejected")
+			_ = upstreamConn.Close()
+			continue
+		}
+		return upstreamConn, upstreamReader, nil
+	}
+	if lastErr == nil {
+		lastErr = errors.New("remote_tcp_access_unavailable")
+	}
+	return nil, nil, lastErr
 }
 
 func (c *ControlPlane) connectGuacd(record remoteSessionRecord, bridgeHost string, bridgePort int) (net.Conn, *bufio.Reader, error) {

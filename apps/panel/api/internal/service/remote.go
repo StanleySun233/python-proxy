@@ -11,23 +11,21 @@ import (
 const remoteSessionTTL = 5 * time.Minute
 
 type remoteSessionRecord struct {
-	SessionID     string
-	Token         string
-	Protocol      string
-	Username      string
-	Password      string
-	PrivateKey    string
-	Passphrase    string
-	Width         int
-	Height        int
-	DPI           int
-	TargetHost    string
-	TargetPort    int
-	TCPAccessHost string
-	TCPAccessPort int
-	ChainNodeIDs  []string
-	ProxyToken    string
-	ExpiresAt     time.Time
+	SessionID   string
+	Token       string
+	Protocol    string
+	Username    string
+	Password    string
+	PrivateKey  string
+	Passphrase  string
+	Width       int
+	Height      int
+	DPI         int
+	TargetHost  string
+	TargetPort  int
+	TCPAttempts []remoteTCPAttempt
+	ProxyToken  string
+	ExpiresAt   time.Time
 }
 
 func (c *ControlPlane) RemoteCredentials(account domain.Account, tenantCtx domain.TenantAuthContext, protocol string) []domain.RemoteCredential {
@@ -147,7 +145,7 @@ func (c *ControlPlane) CreateRemoteSession(account domain.Account, tenantCtx dom
 			return domain.RemoteSession{}, internalFailure("remote_credential_touch_failed")
 		}
 	}
-	tcpAccessHost, tcpAccessPort, err := c.remoteTCPAccessEndpoint(tenantCtx, path)
+	tcpAttempts, err := remoteTCPAttempts(path)
 	if err != nil {
 		return domain.RemoteSession{}, err
 	}
@@ -165,23 +163,21 @@ func (c *ControlPlane) CreateRemoteSession(account domain.Account, tenantCtx dom
 	}
 	expiresAt := time.Now().UTC().Add(remoteSessionTTL)
 	record := remoteSessionRecord{
-		SessionID:     sessionID,
-		Token:         sessionToken,
-		Protocol:      input.Protocol,
-		Username:      input.Username,
-		Password:      input.Password,
-		PrivateKey:    input.PrivateKey,
-		Passphrase:    input.Passphrase,
-		Width:         input.Width,
-		Height:        input.Height,
-		DPI:           input.DPI,
-		TargetHost:    path.TargetHost,
-		TargetPort:    path.TargetPort,
-		TCPAccessHost: tcpAccessHost,
-		TCPAccessPort: tcpAccessPort,
-		ChainNodeIDs:  remoteChainNodeIDs(path),
-		ProxyToken:    proxyToken,
-		ExpiresAt:     expiresAt,
+		SessionID:   sessionID,
+		Token:       sessionToken,
+		Protocol:    input.Protocol,
+		Username:    input.Username,
+		Password:    input.Password,
+		PrivateKey:  input.PrivateKey,
+		Passphrase:  input.Passphrase,
+		Width:       input.Width,
+		Height:      input.Height,
+		DPI:         input.DPI,
+		TargetHost:  path.TargetHost,
+		TargetPort:  path.TargetPort,
+		TCPAttempts: tcpAttempts,
+		ProxyToken:  proxyToken,
+		ExpiresAt:   expiresAt,
 	}
 	c.remoteMu.Lock()
 	c.cleanupRemoteSessionsLocked(time.Now().UTC())
@@ -320,26 +316,64 @@ func canManageTenantRemoteCredentials(tenantCtx domain.TenantAuthContext) bool {
 	return tenantCtx.SuperAdmin || tenantCtx.ActiveTenant.Role == domain.TenantRoleAdmin
 }
 
-func (c *ControlPlane) remoteTCPAccessEndpoint(tenantCtx domain.TenantAuthContext, path domain.NodeAccessPath) (string, int, error) {
-	if path.ListenPort < 1 || path.ListenPort > 65535 {
-		return "", 0, invalidInput("relay_entry_unavailable")
-	}
-	host := strings.TrimSpace(path.ListenHost)
-	if host == "" || host == "0.0.0.0" || host == "::" {
-		nodes := c.store.ListNodesForTenant(tenantCtx)
-		entryNode, ok := nodeByID(nodes, path.EntryNodeID)
-		if !ok || entryNode.PublicHost == "" {
-			return "", 0, invalidInput("relay_entry_unavailable")
-		}
-		host = entryNode.PublicHost
-	}
-	return host, path.ListenPort, nil
+type tcpAccessChainCandidate struct {
+	NextNodeID          string   `json:"nextNodeId"`
+	RemainingHopNodeIDs []string `json:"remainingHopNodeIds,omitempty"`
 }
 
-func remoteChainNodeIDs(path domain.NodeAccessPath) []string {
-	nodeIDs := append([]string(nil), path.RelayNodeIDs...)
-	if path.TargetNodeID != "" && path.TargetNodeID != path.EntryNodeID {
-		nodeIDs = append(nodeIDs, path.TargetNodeID)
+type remoteTCPAttempt struct {
+	Host            string
+	Port            int
+	ChainCandidates []tcpAccessChainCandidate
+}
+
+func remoteTCPAttempts(path domain.NodeAccessPath) ([]remoteTCPAttempt, error) {
+	if path.ListenPort < 1 || path.ListenPort > 65535 {
+		return nil, invalidInput("relay_entry_unavailable")
 	}
-	return uniqueStrings(nodeIDs)
+	candidates := remoteChainCandidates(path)
+	attempts := make([]remoteTCPAttempt, 0, len(path.Entrypoints))
+	for _, entrypoint := range path.Entrypoints {
+		if entrypoint.Status != "healthy" || strings.TrimSpace(entrypoint.Host) == "" {
+			continue
+		}
+		attempts = append(attempts, remoteTCPAttempt{
+			Host:            strings.TrimSpace(entrypoint.Host),
+			Port:            path.ListenPort,
+			ChainCandidates: append([]tcpAccessChainCandidate(nil), candidates...),
+		})
+	}
+	if len(attempts) == 0 {
+		return nil, invalidInput("relay_entry_unavailable")
+	}
+	return attempts, nil
+}
+
+func remoteChainCandidates(path domain.NodeAccessPath) []tcpAccessChainCandidate {
+	if len(path.TopologyGroups) <= 1 {
+		return nil
+	}
+	paths := make([][]string, 0)
+	var walk func(int, []string)
+	walk = func(groupIndex int, current []string) {
+		if groupIndex == len(path.TopologyGroups) {
+			paths = append(paths, append([]string(nil), current...))
+			return
+		}
+		for _, nodeID := range path.TopologyGroups[groupIndex].Candidates {
+			walk(groupIndex+1, append(current, nodeID))
+		}
+	}
+	walk(1, nil)
+	result := make([]tcpAccessChainCandidate, 0, len(paths))
+	for _, concretePath := range paths {
+		if len(concretePath) == 0 {
+			continue
+		}
+		result = append(result, tcpAccessChainCandidate{
+			NextNodeID:          concretePath[0],
+			RemainingHopNodeIDs: append([]string(nil), concretePath[1:]...),
+		})
+	}
+	return result
 }

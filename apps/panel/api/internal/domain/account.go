@@ -97,9 +97,11 @@ type ExtensionAccessPath struct {
 	Mode           string                   `json:"mode"`
 	Protocol       string                   `json:"protocol"`
 	ServiceType    string                   `json:"serviceType"`
+	RemoteProtocol string                   `json:"remoteProtocol"`
 	TargetNodeID   string                   `json:"targetNodeId"`
 	EntryNodeID    string                   `json:"entryNodeId"`
 	RelayNodeIDs   []string                 `json:"relayNodeIds"`
+	Entrypoints    []AccessEntrypoint       `json:"entrypoints"`
 	ListenHost     string                   `json:"listenHost"`
 	ListenPort     int                      `json:"listenPort"`
 	TargetProtocol string                   `json:"targetProtocol"`

@@ -87,9 +87,11 @@ function normalizeAccessPath(path) {
     mode: String(path.mode || ''),
     protocol: String(path.protocol || ''),
     serviceType: String(path.serviceType || ''),
+    remoteProtocol: String(path.remoteProtocol || ''),
     targetNodeId: String(path.targetNodeId || ''),
     entryNodeId: String(path.entryNodeId || ''),
     relayNodeIds: uniqueStrings(path.relayNodeIds),
+    entrypoints: Array.isArray(path.entrypoints) ? path.entrypoints.map(normalizeEntrypoint) : [],
     listenHost: String(path.listenHost || ''),
     listenPort: Number(path.listenPort || 0),
     targetProtocol: String(path.targetProtocol || ''),
@@ -100,8 +102,23 @@ function normalizeAccessPath(path) {
     authMode: String(path.authMode || ''),
     enabled: Boolean(path.enabled),
     options: path.options && typeof path.options === 'object' ? { ...path.options } : {},
-    topology: Array.isArray(path.topology) ? path.topology.map(normalizeTopologyHop) : [],
+    topologyGroups: Array.isArray(path.topologyGroups) ? path.topologyGroups.map(normalizeTopologyGroup) : [],
     health: normalizeAccessPathHealth(path.health)
+  };
+}
+
+function normalizeEntrypoint(entrypoint) {
+  return {
+    nodeId: String(entrypoint.nodeId || ''),
+    host: String(entrypoint.host || ''),
+    port: Number(entrypoint.port || 0),
+    status: String(entrypoint.status || '')
+  };
+}
+
+function normalizeTopologyGroup(group) {
+  return {
+    candidates: Array.isArray(group && group.candidates) ? group.candidates.map(normalizeTopologyHop) : []
   };
 }
 
@@ -124,7 +141,7 @@ function normalizeRoute(route) {
     accessPathId: String(route.accessPathId || ''),
     destinationScope: String(route.destinationScope || ''),
     enabled: Boolean(route.enabled),
-    topology: Array.isArray(route.topology) ? route.topology.map(normalizeTopologyHop) : []
+    topologyGroups: Array.isArray(route.topologyGroups) ? route.topologyGroups.map(normalizeTopologyGroup) : []
   };
 }
 
@@ -259,7 +276,8 @@ function accessPathView(path, state) {
   if (!path) {
     return null;
   }
-  const entryNode = state.remote.nodes.find((node) => node.id === path.entryNodeId);
+  const entrypoint = selectedEntrypoint(path);
+  const entryNode = state.remote.nodes.find((node) => node.id === entrypoint?.nodeId);
   const disabledIds = uniqueStrings(state.accessPathSwitches && state.accessPathSwitches.disabledAccessPathIds);
   const userEnabled = !disabledIds.includes(path.id);
   return {
@@ -267,11 +285,17 @@ function accessPathView(path, state) {
     userEnabled,
     effectiveEnabled: Boolean(path.enabled && userEnabled),
     proxyScheme: path.protocol === 'https' ? 'HTTPS' : 'PROXY',
-    proxyHost: path.listenHost,
-    proxyPort: path.listenPort,
-    entryNodeName: (entryNode && entryNode.name) || path.entryNodeId,
-    entryNodeId: path.entryNodeId
+    proxyHost: entrypoint?.host || '',
+    proxyPort: entrypoint?.port || 0,
+    entryNodeName: (entryNode && entryNode.name) || entrypoint?.nodeId || '',
+    entryNodeId: entrypoint?.nodeId || ''
   };
+}
+
+export function selectedEntrypoint(path) {
+  return (path && Array.isArray(path.entrypoints)
+    ? path.entrypoints.find((entrypoint) => entrypoint.status === 'healthy' && entrypoint.host && entrypoint.port > 0)
+    : null) || null;
 }
 
 export function getState() {

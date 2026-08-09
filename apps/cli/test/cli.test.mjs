@@ -13,7 +13,7 @@ import {
   writeState,
   writeTokens
 } from '../src/storage.ts';
-import { resolveRoute } from '../src/daemon/router.ts';
+import { resolveRoute, selectEntrypoint } from '../src/daemon/router.ts';
 import { buildSshProxyCommand, parseSshCommandArgs, parseSshTarget } from '../src/ssh.ts';
 import { parseShellCommandArgs } from '../src/shell.ts';
 import { parseEnvCommandArgs, parseRunCommandArgs, proxyEnv } from '../src/session-env.ts';
@@ -60,10 +60,11 @@ function accessPath(overrides = {}) {
     chainId: 'chain_1',
     protocol: 'http',
     entryNodeId: 'entry_1',
+    entrypoints: [{nodeId: 'entry_1', host: 'edge.example.com', port: 443, status: 'healthy'}],
     listenHost: 'edge.example.com',
     listenPort: 443,
     enabled: true,
-    topology: [],
+    topologyGroups: [],
     ...overrides
   };
 }
@@ -78,10 +79,22 @@ function routeSnapshot(overrides = {}) {
     chainId: 'chain_1',
     accessPathId: 'path_1',
     enabled: true,
-    topology: [],
+    topologyGroups: [],
     ...overrides
   };
 }
+
+test('entrypoint selection preserves candidate order and skips unhealthy nodes', () => {
+  const path = accessPath({
+    entrypoints: [
+      {nodeId: 'a', host: 'a.test', port: 2990, status: 'degraded'},
+      {nodeId: 'e', host: 'e.test', port: 3990, status: 'healthy'}
+    ]
+  });
+
+  assert.deepEqual(selectEntrypoint(path), {nodeId: 'e', host: 'e.test', port: 3990, status: 'healthy'});
+  assert.equal(selectEntrypoint({...path, entrypoints: path.entrypoints.map((entrypoint) => ({...entrypoint, status: 'stale'}))}), null);
+});
 
 test('storage normalizes defaults and override hosts', async () => {
   await withHome(async () => {

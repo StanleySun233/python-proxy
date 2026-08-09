@@ -61,10 +61,11 @@ function accessPath(upstreamPort, overrides = {}) {
     chainId: 'chain_1',
     protocol: 'http',
     entryNodeId: 'entry_1',
+    entrypoints: [{nodeId: 'entry_1', host: '127.0.0.1', port: upstreamPort, status: 'healthy'}],
     listenHost: '127.0.0.1',
     listenPort: upstreamPort,
     enabled: true,
-    topology: [],
+    topologyGroups: [],
     ...overrides
   };
 }
@@ -88,7 +89,7 @@ function routeSnapshot(overrides = {}) {
     chainId: 'chain_1',
     accessPathId: 'path_1',
     enabled: true,
-    topology: [],
+    topologyGroups: [],
     ...overrides
   };
 }

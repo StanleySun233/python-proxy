@@ -22,6 +22,17 @@ export type TopologyHop = {
   transport: string;
 };
 
+export type AccessEntrypoint = {
+  nodeId: string;
+  host: string;
+  port: number;
+  status: string;
+};
+
+export type TopologyGroup = {
+  candidates: TopologyHop[];
+};
+
 export type OneProxyConfig = {
   schemaVersion: number;
   controlPlaneUrl?: string;
@@ -36,10 +47,11 @@ export type AccessPathSnapshot = {
   chainId?: string;
   protocol?: string;
   entryNodeId?: string;
+  entrypoints: AccessEntrypoint[];
   listenHost: string;
   listenPort: number;
   enabled?: boolean;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
 };
 
 export type RouteSnapshot = {
@@ -52,7 +64,7 @@ export type RouteSnapshot = {
   accessPathId: string;
   destinationScope: string;
   enabled: boolean;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
 };
 
 export type OneProxyState = {

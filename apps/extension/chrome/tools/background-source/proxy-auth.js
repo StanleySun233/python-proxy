@@ -1,5 +1,5 @@
 import { appendLog } from './diagnostics.js';
-import { accessPathById } from './state.js';
+import { accessPathById, selectedEntrypoint } from './state.js';
 import { isUsableAccessPath } from './routing.js';
 
 let proxyAuthCache = {
@@ -15,7 +15,9 @@ function proxyAuthTargetsFrom(state) {
   return new Set((state.remote.accessPaths || [])
     .map((path) => accessPathById(state, path.id))
     .filter(isUsableAccessPath)
-    .map((path) => proxyTargetKey(path.listenHost, path.listenPort)));
+    .map((path) => selectedEntrypoint(path))
+    .filter(Boolean)
+    .map((entrypoint) => proxyTargetKey(entrypoint.host, entrypoint.port)));
 }
 
 export function updateProxyAuthCache(state) {

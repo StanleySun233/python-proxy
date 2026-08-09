@@ -1,5 +1,5 @@
 import { getExtensionPageStatus, syncRemoteConfig } from './api.js';
-import { accessPathById, getState } from './state.js';
+import { accessPathById, getState, selectedEntrypoint } from './state.js';
 import { routePreviewForUrl, urlHostname } from './routing.js';
 import { tabMetricsSnapshot } from './page-metrics.js';
 
@@ -100,10 +100,11 @@ function accessPathForRoute(state, route) {
 }
 
 function accessPathProbeBaseUrl(accessPath) {
-  if (!accessPath || !accessPath.listenHost || !accessPath.listenPort) {
+  const entrypoint = selectedEntrypoint(accessPath);
+  if (!entrypoint) {
     throw new Error('status_bubble_access_path_proxy_required');
   }
-  return `http://${accessPath.listenHost}:${accessPath.listenPort}`;
+  return `http://${entrypoint.host}:${entrypoint.port}`;
 }
 
 function entryProbeUrl(accessPath) {
@@ -122,7 +123,8 @@ function measureEntryLatency(accessPath) {
 }
 
 function routeTopology(accessPath, route) {
-  const topology = Array.isArray(route.topology) && route.topology.length > 0 ? route.topology : (accessPath && Array.isArray(accessPath.topology) ? accessPath.topology : []);
+  const groups = Array.isArray(route.topologyGroups) && route.topologyGroups.length > 0 ? route.topologyGroups : (accessPath && Array.isArray(accessPath.topologyGroups) ? accessPath.topologyGroups : []);
+  const topology = groups.flatMap((group) => group.candidates.slice(0, 1));
   if (topology.length > 0) {
     return topology;
   }
@@ -133,11 +135,12 @@ function routeTopology(accessPath, route) {
 }
 
 function pathHealthKey(accessPath, route) {
+  const entrypoint = selectedEntrypoint(accessPath);
   const topologyIds = routeTopology(accessPath, route).map((node) => node.id).filter(Boolean).join('>');
   return [
     accessPath.id || '',
-    accessPath.listenHost || '',
-    accessPath.listenPort || '',
+    entrypoint?.host || '',
+    entrypoint?.port || '',
     topologyIds,
     route.protocol || '',
     route.host || '',

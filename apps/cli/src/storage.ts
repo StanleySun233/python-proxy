@@ -58,6 +58,17 @@ export type TopologyHop = {
   transport: string;
 };
 
+export type AccessEntrypoint = {
+  nodeId: string;
+  host: string;
+  port: number;
+  status: string;
+};
+
+export type TopologyGroup = {
+  candidates: TopologyHop[];
+};
+
 export type AccessPathSnapshot = {
   id: string;
   name: string;
@@ -65,9 +76,11 @@ export type AccessPathSnapshot = {
   mode: string;
   protocol: string;
   serviceType: string;
+  remoteProtocol: string;
   targetNodeId: string;
   entryNodeId: string;
   relayNodeIds: string[];
+  entrypoints: AccessEntrypoint[];
   listenHost: string;
   listenPort: number;
   targetProtocol: string;
@@ -78,7 +91,7 @@ export type AccessPathSnapshot = {
   authMode: 'proxy_token';
   enabled: boolean;
   options: Record<string, string>;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
   health: {
     status: string;
     reason: string;
@@ -96,7 +109,7 @@ export type RouteSnapshot = {
   accessPathId: string;
   destinationScope: string;
   enabled: boolean;
-  topology: TopologyHop[];
+  topologyGroups: TopologyGroup[];
 };
 
 export type RouteEvaluationContract = {

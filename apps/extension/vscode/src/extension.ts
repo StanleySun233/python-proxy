@@ -47,7 +47,15 @@ type AccessPathSnapshot = {
   targetPort: number;
   listenHost: string;
   listenPort: number;
+  entrypoints: AccessEntrypoint[];
   enabled: boolean;
+};
+
+type AccessEntrypoint = {
+  nodeId: string;
+  host: string;
+  port: number;
+  status: string;
 };
 
 type SshConnection = {
@@ -154,8 +162,9 @@ async function ensureSshConnection(context: vscode.ExtensionContext): Promise<Ss
 async function listSshConnections(context: vscode.ExtensionContext, current: SshConnection | null) {
   const { bootstrap } = await syncBootstrap(context);
   const items = bootstrap.accessPaths
-    .filter((item) => item.enabled && item.targetProtocol === 'ssh' && item.listenHost && item.listenPort > 0)
+    .filter((item) => item.enabled && item.targetProtocol === 'ssh' && healthyEntrypoint(item) !== null)
     .map((item) => {
+      const entrypoint = healthyEntrypoint(item)!;
       const connection: SshConnection = {
         accessPathId: item.id,
         accessPathName: item.name,
@@ -163,14 +172,14 @@ async function listSshConnections(context: vscode.ExtensionContext, current: Ssh
         user: current && current.accessPathId === item.id ? current.user : os.userInfo().username,
         targetHost: item.targetHost,
         targetPort: item.targetPort,
-        endpointHost: item.listenHost,
-        endpointPort: item.listenPort,
+        endpointHost: entrypoint.host,
+        endpointPort: entrypoint.port,
         proxyEnabled: current && current.accessPathId === item.id ? current.proxyEnabled : true
       };
       return {
         label: item.name || item.id,
         description: `${item.targetHost}:${item.targetPort}`,
-        detail: `Access path ${item.listenHost}:${item.listenPort}`,
+        detail: `Access path ${entrypoint.host}:${entrypoint.port}`,
         connection
       };
     });
@@ -178,6 +187,10 @@ async function listSshConnections(context: vscode.ExtensionContext, current: Ssh
     throw new Error('no_ssh_access_path');
   }
   return items;
+}
+
+function healthyEntrypoint(item: AccessPathSnapshot): AccessEntrypoint | null {
+  return item.entrypoints.find((entrypoint) => entrypoint.status === 'healthy' && entrypoint.host && entrypoint.port > 0) || null;
 }
 
 async function writeConnectionSshConfig(context: vscode.ExtensionContext, connection: SshConnection) {
