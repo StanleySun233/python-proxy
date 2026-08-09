@@ -32,6 +32,10 @@ export type {
   ScopeValidation,
   RouteRuleValidationResult,
   Scope,
+  TopologyCandidate,
+  TopologyEdge,
+  TopologyPath,
+  TopologyProjection,
 } from './proxy';
 export type { Group, GroupDetail } from './groups';
 export type {Tenant, TenantCreatedResult, TenantMembershipAccount} from './tenants';

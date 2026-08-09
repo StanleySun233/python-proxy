@@ -10,7 +10,8 @@ import {AuthGate} from '@/components/auth-gate';
 import {ConsoleCrudModal, ConsoleFilterBar, ConsoleFilterItem, ConsoleList, ConsolePage} from '@/components/console-template';
 import {DeleteConfirmationModal, DeleteImpactSection} from '@/components/delete-confirmation-modal';
 import {ResourceGrantModal} from '@/components/resource-grant-modal';
-import {fetchEnums} from '@/lib/api';
+import {TopologyPreview} from '@/components/topology-preview';
+import {fetchEnums, getTopology} from '@/lib/api';
 import {formatControlPlaneError, formatISODateTime} from '@/lib/presentation';
 
 import {useNodeConsole} from '../../../nodes/_components/use-node-console';
@@ -25,6 +26,12 @@ export function NodeTopologyPageContent() {
   const links = nodeConsole.linksQuery.data || [];
   const transports = nodeConsole.transportsQuery.data || [];
   const {data: enums} = useQuery({queryKey: ['enums'], queryFn: () => fetchEnums()});
+  const topologyQuery = useQuery({
+    queryKey: ['proxy-topology', nodeConsole.accessToken, nodeConsole.activeTenantId],
+    queryFn: () => getTopology(nodeConsole.accessToken, nodeConsole.activeTenantId),
+    enabled: Boolean(nodeConsole.accessToken),
+    refetchInterval: 15000
+  });
   const nodesByID = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingLinkID, setEditingLinkID] = useState<string | null>(null);
@@ -100,6 +107,23 @@ export function NodeTopologyPageContent() {
         ) : null}
         title={t('shell.nodeTopology')}
       >
+        <section className="panel-card topology-operations-panel">
+          <div className="panel-toolbar">
+            <div>
+              <p className="section-kicker">{nodesT('operationalTopology')}</p>
+              <h3>{nodesT('dependencyMap')}</h3>
+            </div>
+            <span className="badge">{nodesT('pathCount', {count: topologyQuery.data?.paths.length || 0})}</span>
+          </div>
+          {topologyQuery.isPending ? (
+            <AsyncState detail={t('common.loading')} title={nodesT('loadingTopology')} />
+          ) : topologyQuery.isError ? (
+            <AsyncState actionLabel={t('common.retry')} detail={formatControlPlaneError(topologyQuery.error)} onAction={() => void topologyQuery.refetch()} title={nodesT('failedTopology')} />
+          ) : (
+            <TopologyPreview projection={topologyQuery.data} />
+          )}
+        </section>
+
         <ConsoleFilterBar title={t('common.filter')}>
           <ConsoleFilterItem label={t('common.source')} match={t('common.contains')}>
             <input className="field-input" onChange={(event) => setSourceFilter(event.target.value)} placeholder={t('common.source')} value={sourceFilter} />

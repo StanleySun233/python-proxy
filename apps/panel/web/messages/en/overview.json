@@ -21,5 +21,10 @@
   "failedTopology": "Failed to load topology",
   "loadingQueue": "Loading pending approvals",
   "failedQueue": "Failed to load pending approvals",
-  "healthSummary": "{healthy} healthy / {degraded} degraded"
+  "healthSummary": "{healthy} healthy / {degraded} degraded",
+  "noOperationalPaths": "No access path is available yet. Create a chain and network entry first.",
+  "chainPositions": "chain positions",
+  "activeDependency": "Selected path",
+  "primaryDependency": "Primary dependency",
+  "standbyDependency": "Standby dependency"
 }

@@ -147,3 +147,44 @@ export type Scope = ResourcePermissionMetadata & {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TopologyCandidate = {
+  nodeId: string;
+  nodeName: string;
+  mode: string;
+  scopeKey: string;
+  publicHost?: string;
+  publicPort?: number;
+  priority: number;
+  role: 'primary' | 'standby';
+  health: string;
+  selected: boolean;
+  inbound: number;
+  outbound: number;
+};
+
+export type TopologyEdge = {
+  sourceNodeId: string;
+  targetNodeId: string;
+  kind: 'primary' | 'standby';
+  active: boolean;
+  status: string;
+};
+
+export type TopologyPath = {
+  accessPathId: string;
+  accessPathName: string;
+  chainId: string;
+  chainName: string;
+  targetScope: string;
+  enabled: boolean;
+  status: string;
+  blockingReason: string;
+  groups: {index: number; candidates: TopologyCandidate[]}[];
+  edges: TopologyEdge[];
+};
+
+export type TopologyProjection = {
+  generatedAt: string;
+  paths: TopologyPath[];
+};

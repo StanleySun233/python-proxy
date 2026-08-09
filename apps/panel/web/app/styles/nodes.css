@@ -244,6 +244,254 @@
   background: color-mix(in srgb, var(--panel) 88%, var(--panel-2) 12%);
 }
 
+.topology-operations-panel {
+  min-height: 640px;
+}
+
+.operational-topology {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topology-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-2) 78%, var(--panel) 22%);
+}
+
+.topology-command-bar > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.topology-command-bar strong {
+  font-size: 14px;
+}
+
+.topology-command-bar > div > span:last-child {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.topology-command-bar .field-select {
+  width: min(280px, 40vw);
+}
+
+.topology-path-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 11%, transparent);
+  color: var(--muted);
+  font: 700 10px/1 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.topology-path-status.is-connected {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+}
+
+.topology-blocking-banner {
+  padding: 9px 12px;
+  border-left: 3px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 7%, var(--panel) 93%);
+  color: var(--danger);
+  font: 12px/1.45 var(--font-mono);
+}
+
+.operational-flow-card {
+  min-height: 500px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--line) 28%, transparent) 1px, transparent 1px) 0 0 / 72px 72px,
+    color-mix(in srgb, var(--panel-2) 72%, var(--panel) 28%);
+}
+
+.operational-topology.is-compact .operational-flow-card {
+  min-height: 360px;
+}
+
+.react-flow__node.operational-flow-node,
+.react-flow__node.topology-terminal-node {
+  width: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.operational-node {
+  width: 205px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--panel) 94%, var(--panel-2) 6%);
+  box-shadow: 0 9px 22px color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.operational-node.is-selected {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--line) 52%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 10%, transparent), 0 9px 22px color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.operational-node-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.operational-node-head strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operational-health {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.operational-node.is-healthy .operational-health {
+  background: var(--success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 13%, transparent);
+}
+
+.operational-node.is-down .operational-health {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 13%, transparent);
+}
+
+.operational-node > span {
+  display: block;
+  margin: 7px 0 9px 15px;
+  color: var(--muted);
+  font: 10px/1.3 var(--font-mono);
+}
+
+.topology-role {
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  color: var(--muted);
+  font: 700 8px/1 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.topology-role.is-primary {
+  background: color-mix(in srgb, var(--primary) 11%, transparent);
+  color: var(--primary);
+}
+
+.operational-dependencies {
+  display: flex;
+  gap: 6px;
+  margin-left: 15px;
+}
+
+.operational-dependencies span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font: 10px/1 var(--font-mono);
+}
+
+.topology-terminal {
+  display: grid;
+  width: 150px;
+  justify-items: center;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line) 72%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary) 7%, var(--panel) 93%);
+}
+
+.topology-terminal strong {
+  font: 800 11px/1 var(--font-mono);
+}
+
+.topology-terminal span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.topology-flow-edge .react-flow__edge-path {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.topology-flow-edge.is-active .react-flow__edge-path {
+  stroke: var(--success);
+  stroke-width: 2.6;
+}
+
+.topology-flow-edge.is-blocked .react-flow__edge-path {
+  stroke: var(--danger);
+}
+
+.topology-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.topology-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topology-legend i {
+  width: 24px;
+  border-top: 2px solid var(--muted);
+}
+
+.topology-legend i.is-active {
+  border-color: var(--success);
+}
+
+.topology-legend i.is-standby {
+  border-top-style: dashed;
+}
+
+.topology-empty {
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .topology-command-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topology-command-bar .field-select {
+    width: 100%;
+  }
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;

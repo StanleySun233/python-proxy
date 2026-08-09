@@ -1,5 +1,5 @@
 import { request } from './client';
-import type { Chain, ChainDeleteImpact, ChainHopGroup, ChainProbeResult, ChainValidationResult, ChainPreviewResult, RouteRule, RouteRuleGroup, RouteRuleGroupDeleteImpact, RouteRuleValidationResult, Scope } from '@/lib/types/proxy';
+import type { Chain, ChainDeleteImpact, ChainHopGroup, ChainProbeResult, ChainValidationResult, ChainPreviewResult, RouteRule, RouteRuleGroup, RouteRuleGroupDeleteImpact, RouteRuleValidationResult, Scope, TopologyProjection } from '@/lib/types/proxy';
 import type { NodeAccessPath, NodeAccessPathDeleteImpact, NodeAccessPathPayload, NodeLink } from '@/lib/types/nodes';
 
 export function getChains(accessToken: string, tenantId: string | null) {
@@ -67,6 +67,10 @@ export function previewChain(accessToken: string, tenantId: string | null, paylo
 
 export function getNodeLinks(accessToken: string, tenantId: string | null) {
   return request<NodeLink[]>('/proxy/links', {accessToken, tenantId});
+}
+
+export function getTopology(accessToken: string, tenantId: string | null) {
+  return request<TopologyProjection>('/proxy/topology', {accessToken, tenantId});
 }
 
 export function createNodeLink(accessToken: string, tenantId: string | null, payload: {sourceNodeId: string; targetNodeId: string; linkType: string; trustState: string}) {

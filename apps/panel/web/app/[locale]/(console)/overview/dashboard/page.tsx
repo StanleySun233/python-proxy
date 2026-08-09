@@ -10,7 +10,7 @@ import {useAuth} from '@/components/auth-provider';
 import {PageHero} from '@/components/page-hero';
 import {TopologyPreview} from '@/components/topology-preview';
 import {Link} from '@/i18n/navigation';
-import {getNodes, getOverview, getPendingNodes} from '@/lib/api';
+import {getNodes, getOverview, getPendingNodes, getTopology} from '@/lib/api';
 import {formatControlPlaneError} from '@/lib/presentation';
 
 export default function OverviewDashboardPage() {
@@ -32,6 +32,12 @@ export default function OverviewDashboardPage() {
   const pendingQuery = useQuery({
     queryKey: ['pending-nodes', accessToken, activeTenantId],
     queryFn: () => getPendingNodes(accessToken, activeTenantId),
+    enabled: !!accessToken,
+    refetchInterval: 30000
+  });
+  const topologyQuery = useQuery({
+    queryKey: ['proxy-topology', accessToken, activeTenantId],
+    queryFn: () => getTopology(accessToken, activeTenantId),
     enabled: !!accessToken,
     refetchInterval: 30000
   });
@@ -88,19 +94,19 @@ export default function OverviewDashboardPage() {
               </div>
               <span className="badge">{t('overview.nodesCount', {count: nodes.length})}</span>
             </div>
-            {nodesQuery.isPending ? (
+            {topologyQuery.isPending ? (
               <AsyncState detail={t('common.loading')} title={t('overview.loadingTopology')} />
-            ) : nodesQuery.isError ? (
+            ) : topologyQuery.isError ? (
               <AsyncState
                 actionLabel={t('common.retry')}
-                detail={formatControlPlaneError(nodesQuery.error)}
+                detail={formatControlPlaneError(topologyQuery.error)}
                 onAction={() => {
-                  void nodesQuery.refetch();
+                  void topologyQuery.refetch();
                 }}
                 title={t('overview.failedTopology')}
               />
             ) : (
-              <TopologyPreview nodes={nodes} />
+              <TopologyPreview compact projection={topologyQuery.data} />
             )}
           </article>
 

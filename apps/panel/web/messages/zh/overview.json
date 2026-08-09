@@ -21,5 +21,10 @@
   "failedTopology": "拓扑加载失败",
   "loadingQueue": "加载待审批节点中",
   "failedQueue": "待审批节点加载失败",
-  "healthSummary": "{healthy} 健康 / {degraded} 异常"
+  "healthSummary": "{healthy} 健康 / {degraded} 异常",
+  "noOperationalPaths": "还没有可展示的访问路径，请先创建 Chain 和网络入口。",
+  "chainPositions": "个链路位置",
+  "activeDependency": "当前选中链路",
+  "primaryDependency": "主链路依赖",
+  "standbyDependency": "备用链路依赖"
 }
