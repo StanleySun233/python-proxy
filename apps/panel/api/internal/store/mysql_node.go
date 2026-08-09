@@ -44,20 +44,10 @@ func (s *MySQLStore) ListNodesForTenant(tenantCtx domain.TenantAuthContext) []do
 		     JOIN node_links nl ON nl.id = tnl.node_link_id
 		    WHERE tnl.tenant_id = ? AND tnl.permission IN (?, ?)
 		   UNION ALL
-		   SELECT nap.target_node_id, 1
+		   SELECT ch.node_id, 1
 		     FROM tenant_access_paths tap
 		     JOIN node_access_paths nap ON nap.id = tap.access_path_id
-		    WHERE tap.tenant_id = ? AND tap.permission IN (?, ?) AND nap.target_node_id IS NOT NULL
-		   UNION ALL
-		   SELECT nap.entry_node_id, 1
-		     FROM tenant_access_paths tap
-		     JOIN node_access_paths nap ON nap.id = tap.access_path_id
-		    WHERE tap.tenant_id = ? AND tap.permission IN (?, ?) AND nap.entry_node_id IS NOT NULL
-		   UNION ALL
-		   SELECT relay.id, 1
-		     FROM tenant_access_paths tap
-		     JOIN node_access_paths nap ON nap.id = tap.access_path_id
-		     JOIN nodes relay ON JSON_CONTAINS(nap.relay_node_ids_json, JSON_QUOTE(relay.id))
+		     JOIN chain_hops ch ON ch.chain_id = nap.chain_id
 		    WHERE tap.tenant_id = ? AND tap.permission IN (?, ?)
 		   UNION ALL
 		   SELECT n_scope.id, 1
@@ -70,8 +60,6 @@ func (s *MySQLStore) ListNodesForTenant(tenantCtx domain.TenantAuthContext) []do
 		 ORDER BY n.name`,
 		domain.BindingPermissionManage, domain.BindingPermissionUse,
 		domain.BindingPermissionManage,
-		tenantCtx.ActiveTenant.TenantID, domain.BindingPermissionUse, domain.BindingPermissionManage,
-		tenantCtx.ActiveTenant.TenantID, domain.BindingPermissionUse, domain.BindingPermissionManage,
 		tenantCtx.ActiveTenant.TenantID, domain.BindingPermissionUse, domain.BindingPermissionManage,
 		tenantCtx.ActiveTenant.TenantID, domain.BindingPermissionUse, domain.BindingPermissionManage,
 		tenantCtx.ActiveTenant.TenantID, domain.BindingPermissionUse, domain.BindingPermissionManage,
@@ -203,7 +191,7 @@ func (s *MySQLStore) GetNodeDeleteImpact(nodeID string) (domain.NodeDeleteImpact
 	if err != nil {
 		return impact, err
 	}
-	pathCondition, pathArgs := nodeDeleteAccessPathCondition(nodeID, chainIDs)
+	pathCondition, pathArgs := nodeDeleteAccessPathCondition(chainIDs)
 
 	if impact.Delete.Node, err = s.countNodeDeleteRows("SELECT COUNT(*) FROM nodes WHERE id = ?", nodeID); err != nil {
 		return impact, err
@@ -274,8 +262,6 @@ func (s *MySQLStore) DeleteNode(nodeID string) error {
 	}
 
 	statements := []string{
-		"DELETE FROM node_onboarding_tasks WHERE path_id IN (SELECT id FROM node_access_paths WHERE target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?)))",
-		"DELETE FROM node_access_paths WHERE target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?))",
 		"DELETE FROM chain_probe_results WHERE blocking_node_id = ?",
 		"DELETE FROM node_transports WHERE node_id = ? OR parent_node_id = ?",
 		"DELETE FROM node_links WHERE source_node_id = ? OR target_node_id = ?",
@@ -402,16 +388,11 @@ func (s *MySQLStore) countNodeDeleteTenantBindings(nodeID string, chainIDs []str
 	return total, nil
 }
 
-func nodeDeleteAccessPathCondition(nodeID string, chainIDs []string) (string, []any) {
-	conditions := make([]string, 0, 4)
-	args := make([]any, 0, len(chainIDs)+3)
-	if len(chainIDs) > 0 {
-		conditions = append(conditions, fmt.Sprintf("chain_id IN (%s)", questionPlaceholders(len(chainIDs))))
-		args = append(args, stringArgs(chainIDs)...)
+func nodeDeleteAccessPathCondition(chainIDs []string) (string, []any) {
+	if len(chainIDs) == 0 {
+		return "1 = 0", nil
 	}
-	conditions = append(conditions, "target_node_id = ?", "entry_node_id = ?", "JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?))")
-	args = append(args, nodeID, nodeID, nodeID)
-	return strings.Join(conditions, " OR "), args
+	return fmt.Sprintf("chain_id IN (%s)", questionPlaceholders(len(chainIDs))), stringArgs(chainIDs)
 }
 
 func questionPlaceholders(count int) string {

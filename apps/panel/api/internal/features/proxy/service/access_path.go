@@ -70,31 +70,13 @@ func (s *Service) AccessPathDeleteImpact(tenantCtx domain.TenantAuthContext, pat
 	return s.store.GetNodeAccessPathDeleteImpact(pathID)
 }
 
-func accessPathNodeIDs(targetNodeID string, entryNodeID string, relayNodeIDs []string) []string {
-	nodeIDs := make([]string, 0, len(relayNodeIDs)+2)
-	if targetNodeID != "" {
-		nodeIDs = append(nodeIDs, targetNodeID)
-	}
-	if entryNodeID != "" {
-		nodeIDs = append(nodeIDs, entryNodeID)
-	}
-	for _, nodeID := range relayNodeIDs {
-		if nodeID != "" {
-			nodeIDs = append(nodeIDs, nodeID)
-		}
-	}
-	return nodeIDs
-}
-
 type accessPathValidationInput struct {
 	ChainID        string
 	Name           string
 	Mode           string
 	Protocol       string
 	ServiceType    string
-	TargetNodeID   string
-	EntryNodeID    string
-	RelayNodeIDs   []string
+	RemoteProtocol string
 	ListenHost     string
 	ListenPort     int
 	TargetProtocol string
@@ -111,9 +93,7 @@ func (s *Service) validateCreateAccessPath(tenantCtx domain.TenantAuthContext, i
 		Mode:           input.Mode,
 		Protocol:       input.Protocol,
 		ServiceType:    input.ServiceType,
-		TargetNodeID:   input.TargetNodeID,
-		EntryNodeID:    input.EntryNodeID,
-		RelayNodeIDs:   input.RelayNodeIDs,
+		RemoteProtocol: input.RemoteProtocol,
 		ListenHost:     input.ListenHost,
 		ListenPort:     input.ListenPort,
 		TargetProtocol: input.TargetProtocol,
@@ -131,9 +111,7 @@ func (s *Service) validateUpdateAccessPath(tenantCtx domain.TenantAuthContext, i
 		Mode:           input.Mode,
 		Protocol:       input.Protocol,
 		ServiceType:    input.ServiceType,
-		TargetNodeID:   input.TargetNodeID,
-		EntryNodeID:    input.EntryNodeID,
-		RelayNodeIDs:   input.RelayNodeIDs,
+		RemoteProtocol: input.RemoteProtocol,
 		ListenHost:     input.ListenHost,
 		ListenPort:     input.ListenPort,
 		TargetProtocol: input.TargetProtocol,
@@ -145,7 +123,7 @@ func (s *Service) validateUpdateAccessPath(tenantCtx domain.TenantAuthContext, i
 }
 
 func (s *Service) validateAccessPath(tenantCtx domain.TenantAuthContext, input accessPathValidationInput) error {
-	if input.ChainID == "" || input.Name == "" || input.Mode == "" || input.Protocol == "" || input.ServiceType == "" || input.TargetNodeID == "" || input.EntryNodeID == "" || input.ListenHost == "" || input.TargetProtocol == "" {
+	if input.ChainID == "" || input.Name == "" || input.Mode == "" || input.Protocol == "" || input.ServiceType == "" || input.ListenHost == "" || input.TargetProtocol == "" {
 		return invalidInput("invalid_access_path")
 	}
 	chain, ok := chainByID(s.store.ListChainsForTenant(tenantCtx), input.ChainID)
@@ -161,16 +139,32 @@ func (s *Service) validateAccessPath(tenantCtx domain.TenantAuthContext, input a
 	if !validLatestAccessPathCombination(input.Mode, input.Protocol, input.ServiceType) {
 		return invalidInput("invalid_access_path")
 	}
+	if code := validateRemoteProtocolPath(input.RemoteProtocol, input.Mode, input.Protocol, input.ServiceType); code != "" {
+		return invalidInput(code)
+	}
 	if input.ListenPort < 1 || input.ListenPort > 65535 || input.TargetPort < 1 || input.TargetPort > 65535 {
 		return invalidInput("invalid_access_path")
 	}
 	if input.Mode != "forward" && input.TargetHost == "" {
 		return invalidInput("invalid_access_path")
 	}
-	if !s.tenantEnabledNodesExist(tenantCtx, accessPathNodeIDs(input.TargetNodeID, input.EntryNodeID, input.RelayNodeIDs)) {
+	if !s.tenantEnabledNodesExist(tenantCtx, chainNodeIDs(chain.HopGroups)) {
 		return invalidInput("invalid_access_path")
 	}
 	return nil
+}
+
+func validateRemoteProtocolPath(remoteProtocol string, mode string, protocol string, serviceType string) string {
+	if remoteProtocol == "" {
+		return ""
+	}
+	if remoteProtocol != domain.RemoteProtocolSSH && remoteProtocol != domain.RemoteProtocolRDP {
+		return "invalid_remote_protocol"
+	}
+	if mode != domain.PathModeTCP || protocol != domain.AccessProtocolTCP || serviceType != domain.AccessServiceTCPAccess {
+		return "invalid_remote_protocol_path"
+	}
+	return ""
 }
 
 func validLatestPathMode(value string) bool {

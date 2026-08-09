@@ -57,7 +57,7 @@ func defaultAccessPathInput(chain proxy.Chain, nodeByID map[string]domain.Node) 
 		return domain.CreateNodeAccessPathInput{}, false
 	}
 	entryNode, entryOK := nodeByID[hops[0]]
-	targetNode, targetOK := nodeByID[hops[len(hops)-1]]
+	_, targetOK := nodeByID[hops[len(hops)-1]]
 	if !entryOK || !targetOK {
 		return domain.CreateNodeAccessPathInput{}, false
 	}
@@ -75,9 +75,6 @@ func defaultAccessPathInput(chain proxy.Chain, nodeByID map[string]domain.Node) 
 		Mode:           domain.PathModeForward,
 		Protocol:       domain.AccessProtocolHTTP,
 		ServiceType:    domain.AccessServiceHTTPForwardProxy,
-		TargetNodeID:   targetNode.ID,
-		EntryNodeID:    entryNode.ID,
-		RelayNodeIDs:   relayNodeIDs(hops),
 		ListenHost:     listenHost,
 		ListenPort:     listenPort,
 		TargetProtocol: domain.AccessProtocolHTTP,

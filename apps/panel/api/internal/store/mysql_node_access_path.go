@@ -12,7 +12,7 @@ func (s *MySQLStore) ListNodeAccessPaths() []domain.NodeAccessPath {
 	if err != nil {
 		return nil
 	}
-	return items
+	return deriveNodeAccessPaths(items, s.ListChains(), s.ListNodes())
 }
 
 func (s *MySQLStore) ListNodeAccessPathsForTenant(tenantCtx domain.TenantAuthContext) []domain.NodeAccessPath {
@@ -23,7 +23,7 @@ func (s *MySQLStore) ListNodeAccessPathsForTenant(tenantCtx domain.TenantAuthCon
 	if err != nil {
 		return nil
 	}
-	return items
+	return deriveNodeAccessPaths(items, s.ListChainsForTenant(tenantCtx), s.ListNodesForTenant(tenantCtx))
 }
 
 func (s *MySQLStore) CreateNodeAccessPath(input domain.CreateNodeAccessPathInput) (domain.NodeAccessPath, error) {
@@ -44,9 +44,7 @@ func (s *MySQLStore) CreateNodeAccessPath(input domain.CreateNodeAccessPathInput
 		Mode:           input.Mode,
 		Protocol:       input.Protocol,
 		ServiceType:    input.ServiceType,
-		TargetNodeID:   input.TargetNodeID,
-		EntryNodeID:    input.EntryNodeID,
-		RelayNodeIDs:   normalizeStringSlice(input.RelayNodeIDs),
+		RemoteProtocol: input.RemoteProtocol,
 		ListenHost:     input.ListenHost,
 		ListenPort:     input.ListenPort,
 		TargetProtocol: input.TargetProtocol,
@@ -58,7 +56,10 @@ func (s *MySQLStore) CreateNodeAccessPath(input domain.CreateNodeAccessPathInput
 		Options:        input.Options,
 		Enabled:        true,
 	}
-	return item, s.proxyRepository().createNodeAccessPath(context.Background(), item, "")
+	if err := s.proxyRepository().createNodeAccessPath(context.Background(), item, ""); err != nil {
+		return domain.NodeAccessPath{}, err
+	}
+	return s.deriveNodeAccessPath(item), nil
 }
 
 func (s *MySQLStore) CreateNodeAccessPathForTenant(tenantCtx domain.TenantAuthContext, input domain.CreateNodeAccessPathInput) (domain.NodeAccessPath, error) {
@@ -75,9 +76,7 @@ func (s *MySQLStore) CreateNodeAccessPathForTenant(tenantCtx domain.TenantAuthCo
 		Mode:           input.Mode,
 		Protocol:       input.Protocol,
 		ServiceType:    input.ServiceType,
-		TargetNodeID:   input.TargetNodeID,
-		EntryNodeID:    input.EntryNodeID,
-		RelayNodeIDs:   normalizeStringSlice(input.RelayNodeIDs),
+		RemoteProtocol: input.RemoteProtocol,
 		ListenHost:     input.ListenHost,
 		ListenPort:     input.ListenPort,
 		TargetProtocol: input.TargetProtocol,
@@ -89,11 +88,23 @@ func (s *MySQLStore) CreateNodeAccessPathForTenant(tenantCtx domain.TenantAuthCo
 		Options:        input.Options,
 		Enabled:        true,
 	}
-	return item, s.proxyRepository().createNodeAccessPath(context.Background(), item, tenantCtx.ActiveTenant.TenantID)
+	if err := s.proxyRepository().createNodeAccessPath(context.Background(), item, tenantCtx.ActiveTenant.TenantID); err != nil {
+		return domain.NodeAccessPath{}, err
+	}
+	items := deriveNodeAccessPaths([]domain.NodeAccessPath{item}, s.ListChainsForTenant(tenantCtx), s.ListNodesForTenant(tenantCtx))
+	return items[0], nil
 }
 
 func (s *MySQLStore) UpdateNodeAccessPath(pathID string, input domain.UpdateNodeAccessPathInput) (domain.NodeAccessPath, error) {
-	return s.proxyRepository().updateNodeAccessPath(context.Background(), pathID, input)
+	item, err := s.proxyRepository().updateNodeAccessPath(context.Background(), pathID, input)
+	if err != nil {
+		return domain.NodeAccessPath{}, err
+	}
+	return s.deriveNodeAccessPath(item), nil
+}
+
+func (s *MySQLStore) deriveNodeAccessPath(path domain.NodeAccessPath) domain.NodeAccessPath {
+	return deriveNodeAccessPaths([]domain.NodeAccessPath{path}, s.ListChains(), s.ListNodes())[0]
 }
 
 func (s *MySQLStore) DeleteNodeAccessPath(pathID string) error {

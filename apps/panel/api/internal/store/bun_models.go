@@ -58,29 +58,27 @@ type RouteRuleGroupModel struct {
 type NodeAccessPathModel struct {
 	bun.BaseModel `bun:"table:node_access_paths"`
 
-	ID               string `bun:"id,pk"`
-	ChainID          string `bun:"chain_id,nullzero"`
-	Name             string `bun:"name"`
-	Mode             string `bun:"mode"`
-	Protocol         string `bun:"protocol"`
-	ServiceType      string `bun:"service_type"`
-	TargetNodeID     string `bun:"target_node_id,nullzero"`
-	EntryNodeID      string `bun:"entry_node_id,nullzero"`
-	RelayNodeIDsJSON string `bun:"relay_node_ids_json"`
-	ListenHost       string `bun:"listen_host,nullzero"`
-	ListenPort       int    `bun:"listen_port"`
-	TargetProtocol   string `bun:"target_protocol"`
-	TargetHost       string `bun:"target_host,nullzero"`
-	TargetPort       int    `bun:"target_port"`
-	TargetSNI        string `bun:"target_sni,nullzero"`
-	TLSMode          string `bun:"tls_mode"`
-	AuthMode         string `bun:"auth_mode"`
-	OptionsJSON      string `bun:"options_json"`
-	Enabled          bool   `bun:"enabled"`
-	CreateID         string `bun:"create_id"`
-	OwnerID          string `bun:"owner_id"`
-	CreatedAt        string `bun:"created_at"`
-	UpdatedAt        string `bun:"updated_at"`
+	ID             string `bun:"id,pk"`
+	ChainID        string `bun:"chain_id,nullzero"`
+	Name           string `bun:"name"`
+	Mode           string `bun:"mode"`
+	Protocol       string `bun:"protocol"`
+	ServiceType    string `bun:"service_type"`
+	RemoteProtocol string `bun:"remote_protocol"`
+	ListenHost     string `bun:"listen_host,nullzero"`
+	ListenPort     int    `bun:"listen_port"`
+	TargetProtocol string `bun:"target_protocol"`
+	TargetHost     string `bun:"target_host,nullzero"`
+	TargetPort     int    `bun:"target_port"`
+	TargetSNI      string `bun:"target_sni,nullzero"`
+	TLSMode        string `bun:"tls_mode"`
+	AuthMode       string `bun:"auth_mode"`
+	OptionsJSON    string `bun:"options_json"`
+	Enabled        bool   `bun:"enabled"`
+	CreateID       string `bun:"create_id"`
+	OwnerID        string `bun:"owner_id"`
+	CreatedAt      string `bun:"created_at"`
+	UpdatedAt      string `bun:"updated_at"`
 }
 
 type NodeOnboardingTaskModel struct {

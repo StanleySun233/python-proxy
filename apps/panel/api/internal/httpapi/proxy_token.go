@@ -194,12 +194,11 @@ func proxyTokenAccessPath(paths []domain.NodeAccessPath, accessPathID string, no
 }
 
 func proxyTokenAccessPathIncludesNode(path domain.NodeAccessPath, nodeID string) bool {
-	if path.EntryNodeID == nodeID || path.TargetNodeID == nodeID {
-		return true
-	}
-	for _, relayNodeID := range path.RelayNodeIDs {
-		if relayNodeID == nodeID {
-			return true
+	for _, group := range path.TopologyGroups {
+		for _, candidateID := range group.Candidates {
+			if candidateID == nodeID {
+				return true
+			}
 		}
 	}
 	return false

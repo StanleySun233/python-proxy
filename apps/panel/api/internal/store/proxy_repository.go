@@ -457,9 +457,7 @@ func (r proxyRepository) updateNodeAccessPath(ctx context.Context, pathID string
 		Set("mode = ?", input.Mode).
 		Set("protocol = ?", input.Protocol).
 		Set("service_type = ?", input.ServiceType).
-		Set("target_node_id = ?", input.TargetNodeID).
-		Set("entry_node_id = ?", input.EntryNodeID).
-		Set("relay_node_ids_json = ?", encodeJSONStringSlice(input.RelayNodeIDs)).
+		Set("remote_protocol = ?", input.RemoteProtocol).
 		Set("listen_host = ?", input.ListenHost).
 		Set("listen_port = ?", input.ListenPort).
 		Set("target_protocol = ?", input.TargetProtocol).
@@ -499,11 +497,60 @@ func nodeAccessPathModels(models []NodeAccessPathModel, permissions []string) []
 }
 
 func nodeAccessPathModel(model NodeAccessPathModel) domain.NodeAccessPath {
-	return domain.NodeAccessPath{ID: model.ID, CreateID: model.CreateID, OwnerID: model.OwnerID, ChainID: model.ChainID, Name: model.Name, Mode: model.Mode, Protocol: model.Protocol, ServiceType: model.ServiceType, TargetNodeID: model.TargetNodeID, EntryNodeID: model.EntryNodeID, RelayNodeIDs: decodeJSONStringSlice(model.RelayNodeIDsJSON), ListenHost: model.ListenHost, ListenPort: model.ListenPort, TargetProtocol: model.TargetProtocol, TargetHost: model.TargetHost, TargetPort: model.TargetPort, TargetSNI: model.TargetSNI, TLSMode: model.TLSMode, AuthMode: model.AuthMode, Options: decodeJSONMap(model.OptionsJSON), Enabled: model.Enabled}
+	return domain.NodeAccessPath{ID: model.ID, CreateID: model.CreateID, OwnerID: model.OwnerID, ChainID: model.ChainID, Name: model.Name, Mode: model.Mode, Protocol: model.Protocol, ServiceType: model.ServiceType, RemoteProtocol: model.RemoteProtocol, ListenHost: model.ListenHost, ListenPort: model.ListenPort, TargetProtocol: model.TargetProtocol, TargetHost: model.TargetHost, TargetPort: model.TargetPort, TargetSNI: model.TargetSNI, TLSMode: model.TLSMode, AuthMode: model.AuthMode, Options: decodeJSONMap(model.OptionsJSON), Enabled: model.Enabled}
+}
+
+func deriveNodeAccessPath(path domain.NodeAccessPath, chain proxy.Chain, nodes map[string]domain.Node) domain.NodeAccessPath {
+	path.TargetNodeID = ""
+	path.EntryNodeID = ""
+	path.RelayNodeIDs = nil
+	path.Entrypoints = nil
+	path.TopologyGroups = make([]domain.AccessPathTopologyGroup, 0, len(chain.HopGroups))
+	primary := make([]string, 0, len(chain.HopGroups))
+	for groupIndex, group := range chain.HopGroups {
+		path.TopologyGroups = append(path.TopologyGroups, domain.AccessPathTopologyGroup{Candidates: append([]string(nil), group.Candidates...)})
+		if len(group.Candidates) == 0 {
+			continue
+		}
+		primary = append(primary, group.Candidates[0])
+		if groupIndex == 0 {
+			for _, nodeID := range group.Candidates {
+				node, ok := nodes[nodeID]
+				if !ok {
+					continue
+				}
+				path.Entrypoints = append(path.Entrypoints, domain.AccessEntrypoint{NodeID: node.ID, Host: node.PublicHost, Port: node.PublicPort, Status: node.Status})
+			}
+		}
+	}
+	if len(primary) > 0 {
+		path.EntryNodeID = primary[0]
+		path.TargetNodeID = primary[len(primary)-1]
+	}
+	if len(primary) > 2 {
+		path.RelayNodeIDs = append([]string(nil), primary[1:len(primary)-1]...)
+	}
+	return path
 }
 
 func nodeAccessPathStoreModel(item domain.NodeAccessPath, createdAt string, updatedAt string) NodeAccessPathModel {
-	return NodeAccessPathModel{ID: item.ID, ChainID: item.ChainID, Name: item.Name, Mode: item.Mode, Protocol: item.Protocol, ServiceType: item.ServiceType, TargetNodeID: item.TargetNodeID, EntryNodeID: item.EntryNodeID, RelayNodeIDsJSON: encodeJSONStringSlice(item.RelayNodeIDs), ListenHost: item.ListenHost, ListenPort: item.ListenPort, TargetProtocol: item.TargetProtocol, TargetHost: item.TargetHost, TargetPort: item.TargetPort, TargetSNI: item.TargetSNI, TLSMode: item.TLSMode, AuthMode: item.AuthMode, OptionsJSON: encodeJSONMap(item.Options), Enabled: item.Enabled, CreateID: item.CreateID, OwnerID: item.OwnerID, CreatedAt: createdAt, UpdatedAt: updatedAt}
+	return NodeAccessPathModel{ID: item.ID, ChainID: item.ChainID, Name: item.Name, Mode: item.Mode, Protocol: item.Protocol, ServiceType: item.ServiceType, RemoteProtocol: item.RemoteProtocol, ListenHost: item.ListenHost, ListenPort: item.ListenPort, TargetProtocol: item.TargetProtocol, TargetHost: item.TargetHost, TargetPort: item.TargetPort, TargetSNI: item.TargetSNI, TLSMode: item.TLSMode, AuthMode: item.AuthMode, OptionsJSON: encodeJSONMap(item.Options), Enabled: item.Enabled, CreateID: item.CreateID, OwnerID: item.OwnerID, CreatedAt: createdAt, UpdatedAt: updatedAt}
+}
+
+func deriveNodeAccessPaths(paths []domain.NodeAccessPath, chains []proxy.Chain, nodes []domain.Node) []domain.NodeAccessPath {
+	chainsByID := make(map[string]proxy.Chain, len(chains))
+	for _, chain := range chains {
+		chainsByID[chain.ID] = chain
+	}
+	nodesByID := make(map[string]domain.Node, len(nodes))
+	for _, node := range nodes {
+		nodesByID[node.ID] = node
+	}
+	result := make([]domain.NodeAccessPath, 0, len(paths))
+	for _, path := range paths {
+		result = append(result, deriveNodeAccessPath(path, chainsByID[path.ChainID], nodesByID))
+	}
+	return result
 }
 
 func chainProbeResultFromInput(input proxy.SaveChainProbeResultInput) proxy.ChainProbeResult {

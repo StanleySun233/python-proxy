@@ -31,6 +31,15 @@ func TestInitSchemaRunsFinalSchemaForEmptyDatabase(t *testing.T) {
 	if normalized := normalizedQuery(chainProbeResults.Query); !strings.Contains(normalized, "blocking_group_index INT NOT NULL DEFAULT -1") {
 		t.Fatalf("chain_probe_results missing blocking group: %s", normalized)
 	}
+	accessPaths := normalizedQuery(findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS node_access_paths").Query)
+	if !strings.Contains(accessPaths, "remote_protocol VARCHAR(16) NOT NULL DEFAULT ''") {
+		t.Fatalf("node_access_paths missing remote protocol: %s", accessPaths)
+	}
+	for _, removed := range []string{"target_node_id", "entry_node_id", "relay_node_ids_json"} {
+		if strings.Contains(accessPaths, removed) {
+			t.Fatalf("node_access_paths persists derived field %s: %s", removed, accessPaths)
+		}
+	}
 }
 
 func TestInitSchemaSkipsNonEmptyDatabase(t *testing.T) {

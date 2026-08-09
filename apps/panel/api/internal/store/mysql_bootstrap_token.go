@@ -160,7 +160,6 @@ func (s *MySQLStore) DeleteBootstrapToken(tokenID string) error {
 			   AND NOT EXISTS (SELECT 1 FROM node_api_tokens nat WHERE nat.node_id = n.id)
 			   AND NOT EXISTS (SELECT 1 FROM node_transports tr WHERE tr.node_id = n.id OR tr.parent_node_id = n.id)
 			   AND NOT EXISTS (SELECT 1 FROM node_health_snapshots nhs WHERE nhs.node_id = n.id)
-			   AND NOT EXISTS (SELECT 1 FROM node_access_paths nap WHERE nap.target_node_id = n.id OR nap.entry_node_id = n.id)
 			   AND NOT EXISTS (SELECT 1 FROM node_links nl WHERE nl.source_node_id = n.id OR nl.target_node_id = n.id)
 			   AND NOT EXISTS (SELECT 1 FROM chain_hops ch WHERE ch.node_id = n.id)
 			   AND NOT EXISTS (SELECT 1 FROM node_policy_assignments npa WHERE npa.node_id = n.id)

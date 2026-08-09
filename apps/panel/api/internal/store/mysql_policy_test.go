@@ -1,7 +1,6 @@
 package store
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/StanleySun233/python-proxy/apps/panel/api/internal/domain"
@@ -26,39 +25,11 @@ func TestDefaultAccessPathInputUsesPublicEntryNode(t *testing.T) {
 	if got.Mode != domain.PathModeForward || got.Protocol != domain.AccessProtocolHTTP || got.ServiceType != domain.AccessServiceHTTPForwardProxy {
 		t.Fatalf("mode/protocol/service = %+v", got)
 	}
-	if got.EntryNodeID != "edge" || got.TargetNodeID != "relay" {
-		t.Fatalf("nodes = %+v", got)
-	}
 	if got.ListenHost != "103.214.172.211" || got.ListenPort != 2988 {
 		t.Fatalf("listen = %+v", got)
 	}
 	if got.TargetProtocol != domain.AccessProtocolHTTP || got.TargetPort != 2988 || got.AuthMode != domain.AccessAuthProxyToken {
 		t.Fatalf("target/auth = %+v", got)
-	}
-	if len(got.RelayNodeIDs) != 0 {
-		t.Fatalf("relay nodes = %+v", got.RelayNodeIDs)
-	}
-}
-
-func TestDefaultAccessPathInputKeepsIntermediateRelayNodes(t *testing.T) {
-	nodes := map[string]domain.Node{
-		"edge":   {ID: "edge", PublicHost: "203.0.113.10", PublicPort: 2988},
-		"relay1": {ID: "relay1"},
-		"relay2": {ID: "relay2"},
-		"target": {ID: "target"},
-	}
-	chain := proxy.Chain{ID: "chain", Name: "multi-hop", HopGroups: []proxy.ChainHopGroup{{Candidates: []string{"edge"}}, {Candidates: []string{"relay1"}}, {Candidates: []string{"relay2"}}, {Candidates: []string{"target"}}}}
-
-	got, ok := defaultAccessPathInput(chain, nodes)
-	if !ok {
-		t.Fatalf("defaultAccessPathInput ok = false")
-	}
-
-	if got.EntryNodeID != "edge" || got.TargetNodeID != "target" {
-		t.Fatalf("nodes = %+v", got)
-	}
-	if want := []string{"relay1", "relay2"}; !reflect.DeepEqual(got.RelayNodeIDs, want) {
-		t.Fatalf("relay nodes = %+v, want %+v", got.RelayNodeIDs, want)
 	}
 }
 

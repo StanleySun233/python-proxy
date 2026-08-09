@@ -181,7 +181,6 @@ func TestDeleteNodeDeletesRelationshipsBeforeNode(t *testing.T) {
 	chainArgs := []driver.Value{"chain-1", "chain-2"}
 	nodeArg := []driver.Value{"node-1"}
 	twoNodeArgs := []driver.Value{"node-1", "node-1"}
-	threeNodeArgs := []driver.Value{"node-1", "node-1", "node-1"}
 	want := []nodeDeleteCall{
 		{Query: "BEGIN"},
 		{Query: "SELECT DISTINCT chain_id FROM chain_hops WHERE node_id = ? ORDER BY chain_id", Args: nodeArg},
@@ -192,8 +191,6 @@ func TestDeleteNodeDeletesRelationshipsBeforeNode(t *testing.T) {
 		{Query: "DELETE FROM tenant_chains WHERE chain_id IN (?,?)", Args: chainArgs},
 		{Query: "DELETE FROM chain_hops WHERE chain_id IN (?,?)", Args: chainArgs},
 		{Query: "DELETE FROM chains WHERE id IN (?,?)", Args: chainArgs},
-		{Query: "DELETE FROM node_onboarding_tasks WHERE path_id IN (SELECT id FROM node_access_paths WHERE target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?)))", Args: threeNodeArgs},
-		{Query: "DELETE FROM node_access_paths WHERE target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?))", Args: threeNodeArgs},
 		{Query: "DELETE FROM chain_probe_results WHERE blocking_node_id = ?", Args: nodeArg},
 		{Query: "DELETE FROM node_transports WHERE node_id = ? OR parent_node_id = ?", Args: twoNodeArgs},
 		{Query: "DELETE FROM node_links WHERE source_node_id = ? OR target_node_id = ?", Args: twoNodeArgs},
@@ -218,25 +215,25 @@ func TestGetNodeDeleteImpactCountsRelationships(t *testing.T) {
 	record := &nodeDeleteRecord{
 		chainIDs: []string{"chain-1", "chain-2"},
 		counts: map[string]int{
-			"SELECT COUNT(*) FROM nodes WHERE id = ?":                  1,
-			"SELECT COUNT(*) FROM chain_hops WHERE chain_id IN (?,?)":  4,
-			"SELECT COUNT(*) FROM route_rules WHERE chain_id IN (?,?)": 3,
-			"SELECT COUNT(DISTINCT id) FROM node_access_paths WHERE chain_id IN (?,?) OR target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?))":                                                                               5,
-			"SELECT COUNT(DISTINCT id) FROM node_onboarding_tasks WHERE target_node_id = ? OR path_id IN (SELECT id FROM node_access_paths WHERE chain_id IN (?,?) OR target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?)))": 6,
-			"SELECT COUNT(DISTINCT chain_id) FROM chain_probe_results WHERE chain_id IN (?,?) OR blocking_node_id = ?":                                                                                                                                               2,
-			"SELECT COUNT(*) FROM node_transports WHERE node_id = ? OR parent_node_id = ?":                                                                                                                                                                           7,
-			"SELECT COUNT(*) FROM node_links WHERE source_node_id = ? OR target_node_id = ?":                                                                                                                                                                         8,
-			"SELECT COUNT(*) FROM node_policy_assignments WHERE node_id = ?":                                                                                                                                                                                         9,
-			"SELECT COUNT(*) FROM node_health_snapshots WHERE node_id = ?":                                                                                                                                                                                           10,
-			"SELECT COUNT(*) FROM node_sla_minutes WHERE node_id = ?":                                                                                                                                                                                                11,
-			"SELECT COUNT(*) FROM node_api_tokens WHERE node_id = ?":                                                                                                                                                                                                 12,
-			"SELECT COUNT(*) FROM node_trust_materials WHERE node_id = ?":                                                                                                                                                                                            13,
-			"SELECT COUNT(*) FROM bootstrap_tokens WHERE target_id = ?":                                                                                                                                                                                              14,
-			"SELECT COUNT(*) FROM tenant_nodes WHERE node_id = ?":                                                                                                                                                                                                    1,
-			"SELECT COUNT(*) FROM tenant_node_links WHERE node_link_id IN (SELECT id FROM node_links WHERE source_node_id = ? OR target_node_id = ?)":                                                                                                                2,
-			"SELECT COUNT(*) FROM tenant_access_paths WHERE access_path_id IN (SELECT id FROM node_access_paths WHERE chain_id IN (?,?) OR target_node_id = ? OR entry_node_id = ? OR JSON_CONTAINS(relay_node_ids_json, JSON_QUOTE(?)))": 3,
-			"SELECT COUNT(*) FROM tenant_chains WHERE chain_id IN (?,?)": 4,
-			"SELECT COUNT(*) FROM nodes WHERE parent_node_id = ?":        16,
+			"SELECT COUNT(*) FROM nodes WHERE id = ?":                                  1,
+			"SELECT COUNT(*) FROM chain_hops WHERE chain_id IN (?,?)":                  4,
+			"SELECT COUNT(*) FROM route_rules WHERE chain_id IN (?,?)":                 3,
+			"SELECT COUNT(DISTINCT id) FROM node_access_paths WHERE chain_id IN (?,?)": 5,
+			"SELECT COUNT(DISTINCT id) FROM node_onboarding_tasks WHERE target_node_id = ? OR path_id IN (SELECT id FROM node_access_paths WHERE chain_id IN (?,?))": 6,
+			"SELECT COUNT(DISTINCT chain_id) FROM chain_probe_results WHERE chain_id IN (?,?) OR blocking_node_id = ?":                                               2,
+			"SELECT COUNT(*) FROM node_transports WHERE node_id = ? OR parent_node_id = ?":                                                                           7,
+			"SELECT COUNT(*) FROM node_links WHERE source_node_id = ? OR target_node_id = ?":                                                                         8,
+			"SELECT COUNT(*) FROM node_policy_assignments WHERE node_id = ?":                                                                                         9,
+			"SELECT COUNT(*) FROM node_health_snapshots WHERE node_id = ?":                                                                                           10,
+			"SELECT COUNT(*) FROM node_sla_minutes WHERE node_id = ?":                                                                                                11,
+			"SELECT COUNT(*) FROM node_api_tokens WHERE node_id = ?":                                                                                                 12,
+			"SELECT COUNT(*) FROM node_trust_materials WHERE node_id = ?":                                                                                            13,
+			"SELECT COUNT(*) FROM bootstrap_tokens WHERE target_id = ?":                                                                                              14,
+			"SELECT COUNT(*) FROM tenant_nodes WHERE node_id = ?":                                                                                                    1,
+			"SELECT COUNT(*) FROM tenant_node_links WHERE node_link_id IN (SELECT id FROM node_links WHERE source_node_id = ? OR target_node_id = ?)":                2,
+			"SELECT COUNT(*) FROM tenant_access_paths WHERE access_path_id IN (SELECT id FROM node_access_paths WHERE chain_id IN (?,?))":                            3,
+			"SELECT COUNT(*) FROM tenant_chains WHERE chain_id IN (?,?)":                                                                                             4,
+			"SELECT COUNT(*) FROM nodes WHERE parent_node_id = ?":                                                                                                    16,
 		},
 	}
 	db := openNodeDeleteTestDB(t, record)

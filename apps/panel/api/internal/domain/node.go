@@ -93,28 +93,42 @@ type UpdateNodeLinkInput struct {
 }
 
 type NodeAccessPath struct {
-	ID             string            `json:"id"`
-	CreateID       string            `json:"createId"`
-	OwnerID        string            `json:"ownerId"`
-	ChainID        string            `json:"chainId"`
-	Name           string            `json:"name"`
-	Mode           string            `json:"mode"`
-	Protocol       string            `json:"protocol"`
-	ServiceType    string            `json:"serviceType"`
-	TargetNodeID   string            `json:"targetNodeId"`
-	EntryNodeID    string            `json:"entryNodeId"`
-	RelayNodeIDs   []string          `json:"relayNodeIds"`
-	ListenHost     string            `json:"listenHost"`
-	ListenPort     int               `json:"listenPort"`
-	TargetProtocol string            `json:"targetProtocol"`
-	TargetHost     string            `json:"targetHost"`
-	TargetPort     int               `json:"targetPort"`
-	TargetSNI      string            `json:"targetSni"`
-	TLSMode        string            `json:"tlsMode"`
-	AuthMode       string            `json:"authMode"`
-	Options        map[string]string `json:"options"`
-	Enabled        bool              `json:"enabled"`
-	Permission     string            `json:"permission,omitempty"`
+	ID             string                    `json:"id"`
+	CreateID       string                    `json:"createId"`
+	OwnerID        string                    `json:"ownerId"`
+	ChainID        string                    `json:"chainId"`
+	Name           string                    `json:"name"`
+	Mode           string                    `json:"mode"`
+	Protocol       string                    `json:"protocol"`
+	ServiceType    string                    `json:"serviceType"`
+	RemoteProtocol string                    `json:"remoteProtocol"`
+	TargetNodeID   string                    `json:"targetNodeId"`
+	EntryNodeID    string                    `json:"entryNodeId"`
+	RelayNodeIDs   []string                  `json:"relayNodeIds"`
+	Entrypoints    []AccessEntrypoint        `json:"entrypoints"`
+	TopologyGroups []AccessPathTopologyGroup `json:"topologyGroups"`
+	ListenHost     string                    `json:"listenHost"`
+	ListenPort     int                       `json:"listenPort"`
+	TargetProtocol string                    `json:"targetProtocol"`
+	TargetHost     string                    `json:"targetHost"`
+	TargetPort     int                       `json:"targetPort"`
+	TargetSNI      string                    `json:"targetSni"`
+	TLSMode        string                    `json:"tlsMode"`
+	AuthMode       string                    `json:"authMode"`
+	Options        map[string]string         `json:"options"`
+	Enabled        bool                      `json:"enabled"`
+	Permission     string                    `json:"permission,omitempty"`
+}
+
+type AccessEntrypoint struct {
+	NodeID string `json:"nodeId"`
+	Host   string `json:"host"`
+	Port   int    `json:"port"`
+	Status string `json:"status"`
+}
+
+type AccessPathTopologyGroup struct {
+	Candidates []string `json:"candidates"`
 }
 
 type CreateNodeAccessPathInput struct {
@@ -123,9 +137,7 @@ type CreateNodeAccessPathInput struct {
 	Mode           string            `json:"mode"`
 	Protocol       string            `json:"protocol"`
 	ServiceType    string            `json:"serviceType"`
-	TargetNodeID   string            `json:"targetNodeId"`
-	EntryNodeID    string            `json:"entryNodeId"`
-	RelayNodeIDs   []string          `json:"relayNodeIds"`
+	RemoteProtocol string            `json:"remoteProtocol"`
 	ListenHost     string            `json:"listenHost"`
 	ListenPort     int               `json:"listenPort"`
 	TargetProtocol string            `json:"targetProtocol"`
@@ -143,9 +155,7 @@ type UpdateNodeAccessPathInput struct {
 	Mode           string            `json:"mode"`
 	Protocol       string            `json:"protocol"`
 	ServiceType    string            `json:"serviceType"`
-	TargetNodeID   string            `json:"targetNodeId"`
-	EntryNodeID    string            `json:"entryNodeId"`
-	RelayNodeIDs   []string          `json:"relayNodeIds"`
+	RemoteProtocol string            `json:"remoteProtocol"`
 	ListenHost     string            `json:"listenHost"`
 	ListenPort     int               `json:"listenPort"`
 	TargetProtocol string            `json:"targetProtocol"`
