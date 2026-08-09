@@ -9,7 +9,7 @@ import (
 )
 
 func (s *MySQLStore) initRemoteSchema(ctx context.Context) error {
-	_, err := s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS remote_credentials (
+	if _, err := s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS remote_credentials (
 		id VARCHAR(191) PRIMARY KEY,
 		tenant_id VARCHAR(191),
 		account_id VARCHAR(191) NOT NULL,
@@ -26,6 +26,19 @@ func (s *MySQLStore) initRemoteSchema(ctx context.Context) error {
 		INDEX idx_remote_credentials_tenant (tenant_id, protocol),
 		CONSTRAINT fk_remote_credentials_account_id FOREIGN KEY (account_id) REFERENCES accounts(id),
 		CONSTRAINT fk_remote_credentials_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+	)`); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS tenant_remote_access_defaults (
+		tenant_id VARCHAR(191) NOT NULL,
+		remote_protocol VARCHAR(16) NOT NULL,
+		access_path_id VARCHAR(191) NOT NULL,
+		updated_by VARCHAR(191) NOT NULL,
+		updated_at VARCHAR(64) NOT NULL,
+		PRIMARY KEY (tenant_id, remote_protocol),
+		CONSTRAINT fk_remote_defaults_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+		CONSTRAINT fk_remote_defaults_access_path_id FOREIGN KEY (access_path_id) REFERENCES node_access_paths(id) ON DELETE CASCADE,
+		CONSTRAINT fk_remote_defaults_updated_by FOREIGN KEY (updated_by) REFERENCES accounts(id)
 	)`)
 	return err
 }

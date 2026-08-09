@@ -18,6 +18,7 @@ func TestInitSchemaRunsFinalSchemaForEmptyDatabase(t *testing.T) {
 
 	findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS roles")
 	findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS tenant_access_paths")
+	findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS tenant_remote_access_defaults")
 	findTokenSecurityCall(t, record, "INSERT IGNORE INTO field_enum")
 	chainHops := findTokenSecurityCall(t, record, "CREATE TABLE IF NOT EXISTS chain_hops")
 	normalizedChainHops := normalizedQuery(chainHops.Query)

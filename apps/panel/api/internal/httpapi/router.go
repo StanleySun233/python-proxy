@@ -46,6 +46,8 @@ func (r *Router) routes(cfg HTTPConfig) {
 	r.mux.HandleFunc("/api/proxy/extension/direct/session", r.requireAccount(r.handleClientDirectSession))
 	r.mux.HandleFunc("/api/remote/credentials", r.requireAccount(r.handleRemoteCredentials))
 	r.mux.HandleFunc("/api/remote/credentials/", r.requireAccount(r.handleRemoteCredentialByID))
+	r.mux.HandleFunc("/api/remote/defaults", r.requireAccount(r.handleRemoteDefaults))
+	r.mux.HandleFunc("/api/remote/defaults/", r.requireAccount(r.handleRemoteDefaultByProtocol))
 	r.mux.HandleFunc("/api/remote/sessions", r.requireAccount(r.handleRemoteSessions))
 	r.mux.HandleFunc("/api/remote/sessions/", r.handleRemoteSessionByID)
 	r.mux.HandleFunc("/api/overview", r.requireAccount(r.handleOverview))

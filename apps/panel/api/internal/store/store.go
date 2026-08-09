@@ -18,6 +18,9 @@ type AccountStore interface {
 	DeleteRemoteCredential(account domain.Account, tenantCtx domain.TenantAuthContext, credentialID string) error
 	RemoteCredential(account domain.Account, tenantCtx domain.TenantAuthContext, credentialID string) (domain.RemoteCredential, bool)
 	TouchRemoteCredential(credentialID string) error
+	ListRemoteAccessDefaults(tenantID string) []domain.RemoteAccessDefault
+	RemoteAccessDefault(tenantID string, protocol string) (domain.RemoteAccessDefault, bool)
+	SetRemoteAccessDefault(tenantID string, protocol string, accessPathID string, updatedBy string) (domain.RemoteAccessDefault, error)
 }
 
 type SessionStore interface {

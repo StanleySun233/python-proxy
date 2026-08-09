@@ -40,6 +40,53 @@ func (r *Router) handleRemoteCredentials(w http.ResponseWriter, req *http.Reques
 	}
 }
 
+func (r *Router) handleRemoteDefaults(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		writeMethodNotAllowed(w, "GET")
+		return
+	}
+	tenantCtx, ok := tenantAuthContextFromContext(req.Context())
+	if !ok {
+		writeError(w, http.StatusBadRequest, "tenant_required")
+		return
+	}
+	items, err := r.service.RemoteAccessDefaults(tenantCtx)
+	if err != nil {
+		writeServiceError(w, req, err, "remote_defaults_read_failed")
+		return
+	}
+	writeSuccess(w, http.StatusOK, items)
+}
+
+func (r *Router) handleRemoteDefaultByProtocol(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPut {
+		writeMethodNotAllowed(w, "PUT")
+		return
+	}
+	account, ok := accountFromContext(req.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "invalid_access_token")
+		return
+	}
+	tenantCtx, ok := tenantAuthContextFromContext(req.Context())
+	if !ok {
+		writeError(w, http.StatusBadRequest, "tenant_required")
+		return
+	}
+	protocol := strings.Trim(strings.TrimPrefix(req.URL.Path, "/api/remote/defaults/"), "/")
+	var payload domain.SetRemoteAccessDefaultInput
+	if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json")
+		return
+	}
+	item, err := r.service.SetRemoteAccessDefault(account, tenantCtx, protocol, payload.AccessPathID)
+	if err != nil {
+		writeServiceError(w, req, err, "remote_default_update_failed")
+		return
+	}
+	writeSuccess(w, http.StatusOK, item)
+}
+
 func (r *Router) handleRemoteCredentialByID(w http.ResponseWriter, req *http.Request) {
 	account, ok := accountFromContext(req.Context())
 	if !ok {

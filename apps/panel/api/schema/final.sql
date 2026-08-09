@@ -285,6 +285,18 @@ CREATE TABLE IF NOT EXISTS node_access_paths (
   CONSTRAINT fk_node_access_paths_owner_id FOREIGN KEY (owner_id) REFERENCES accounts(id)
 );
 
+CREATE TABLE IF NOT EXISTS tenant_remote_access_defaults (
+  tenant_id VARCHAR(191) NOT NULL,
+  remote_protocol VARCHAR(16) NOT NULL,
+  access_path_id VARCHAR(191) NOT NULL,
+  updated_by VARCHAR(191) NOT NULL,
+  updated_at VARCHAR(64) NOT NULL,
+  PRIMARY KEY (tenant_id, remote_protocol),
+  CONSTRAINT fk_remote_defaults_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+  CONSTRAINT fk_remote_defaults_access_path_id FOREIGN KEY (access_path_id) REFERENCES node_access_paths(id) ON DELETE CASCADE,
+  CONSTRAINT fk_remote_defaults_updated_by FOREIGN KEY (updated_by) REFERENCES accounts(id)
+);
+
 CREATE TABLE IF NOT EXISTS tenant_nodes (
   tenant_id VARCHAR(191) NOT NULL,
   node_id VARCHAR(191) NOT NULL,

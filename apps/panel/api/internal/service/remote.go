@@ -37,6 +37,39 @@ func (c *ControlPlane) RemoteCredentials(account domain.Account, tenantCtx domai
 	return c.store.ListRemoteCredentials(account, tenantCtx, protocol)
 }
 
+func (c *ControlPlane) RemoteAccessDefaults(tenantCtx domain.TenantAuthContext) ([]domain.RemoteAccessDefault, error) {
+	if tenantCtx.ActiveTenant.TenantID == "" {
+		return nil, invalidInput("tenant_required")
+	}
+	return c.store.ListRemoteAccessDefaults(tenantCtx.ActiveTenant.TenantID), nil
+}
+
+func (c *ControlPlane) SetRemoteAccessDefault(account domain.Account, tenantCtx domain.TenantAuthContext, protocol string, accessPathID string) (domain.RemoteAccessDefault, error) {
+	protocol = strings.TrimSpace(protocol)
+	accessPathID = strings.TrimSpace(accessPathID)
+	if tenantCtx.ActiveTenant.TenantID == "" {
+		return domain.RemoteAccessDefault{}, invalidInput("tenant_required")
+	}
+	if !canManageTenantRemoteCredentials(tenantCtx) {
+		return domain.RemoteAccessDefault{}, newError(http.StatusForbidden, "tenant_role_forbidden")
+	}
+	if !validRemoteProtocol(protocol) || accessPathID == "" {
+		return domain.RemoteAccessDefault{}, invalidInput("invalid_remote_default")
+	}
+	path, ok := c.accessPathForTenant(tenantCtx, accessPathID)
+	if !ok {
+		return domain.RemoteAccessDefault{}, newError(http.StatusNotFound, "access_path_not_found")
+	}
+	if code := validateRemoteDefaultPath(path, protocol); code != "" {
+		return domain.RemoteAccessDefault{}, invalidInput(code)
+	}
+	item, err := c.store.SetRemoteAccessDefault(tenantCtx.ActiveTenant.TenantID, protocol, accessPathID, account.ID)
+	if err != nil {
+		return domain.RemoteAccessDefault{}, internalFailure("remote_default_update_failed")
+	}
+	return item, nil
+}
+
 func (c *ControlPlane) CreateRemoteCredential(account domain.Account, tenantCtx domain.TenantAuthContext, input domain.CreateRemoteCredentialInput) (domain.RemoteCredential, error) {
 	input = normalizeCreateRemoteCredentialInput(input)
 	if err := validateCreateRemoteCredentialInput(tenantCtx, input); err != nil {
@@ -85,12 +118,19 @@ func (c *ControlPlane) CreateRemoteSession(account domain.Account, tenantCtx dom
 	if err := validateRemoteSessionInput(input); err != nil {
 		return domain.RemoteSession{}, err
 	}
+	input.AccessPathID = resolveRemoteAccessPathID(input.AccessPathID, input.Protocol, c.store.ListRemoteAccessDefaults(tenantCtx.ActiveTenant.TenantID))
+	if input.AccessPathID == "" {
+		return domain.RemoteSession{}, invalidInput("remote_default_not_configured")
+	}
 	path, ok := c.accessPathForTenant(tenantCtx, input.AccessPathID)
 	if !ok || !path.Enabled {
 		return domain.RemoteSession{}, newError(http.StatusNotFound, "access_path_not_found")
 	}
 	if path.Mode != domain.PathModeTCP || path.Protocol != domain.AccessProtocolTCP || path.ServiceType != domain.AccessServiceTCPAccess {
 		return domain.RemoteSession{}, invalidInput("remote_access_path_must_be_tcp")
+	}
+	if path.RemoteProtocol != input.Protocol {
+		return domain.RemoteSession{}, invalidInput("remote_access_path_protocol_mismatch")
 	}
 	if path.TargetHost == "" || path.TargetPort < 1 || path.TargetPort > 65535 || path.EntryNodeID == "" || path.TargetNodeID == "" {
 		return domain.RemoteSession{}, invalidInput("invalid_remote_access_path")
@@ -148,11 +188,12 @@ func (c *ControlPlane) CreateRemoteSession(account domain.Account, tenantCtx dom
 	c.remoteSessions[sessionID] = record
 	c.remoteMu.Unlock()
 	return domain.RemoteSession{
-		ID:        sessionID,
-		Token:     sessionToken,
-		Protocol:  input.Protocol,
-		ExpiresAt: expiresAt.Format(time.RFC3339),
-		TunnelURL: "/api/remote/sessions/" + sessionID + "/tunnel",
+		ID:           sessionID,
+		Token:        sessionToken,
+		Protocol:     input.Protocol,
+		AccessPathID: input.AccessPathID,
+		ExpiresAt:    expiresAt.Format(time.RFC3339),
+		TunnelURL:    "/api/remote/sessions/" + sessionID + "/tunnel",
 	}, nil
 }
 
@@ -230,7 +271,7 @@ func validateCreateRemoteCredentialInput(tenantCtx domain.TenantAuthContext, inp
 }
 
 func validateRemoteSessionInput(input domain.RemoteSessionInput) error {
-	if !validRemoteProtocol(input.Protocol) || input.AccessPathID == "" || input.Username == "" {
+	if !validRemoteProtocol(input.Protocol) || input.Username == "" {
 		return invalidInput("invalid_remote_session_payload")
 	}
 	switch input.Protocol {
@@ -244,6 +285,31 @@ func validateRemoteSessionInput(input domain.RemoteSessionInput) error {
 		}
 	}
 	return nil
+}
+
+func resolveRemoteAccessPathID(explicitPathID string, protocol string, defaults []domain.RemoteAccessDefault) string {
+	if explicitPathID != "" {
+		return explicitPathID
+	}
+	for _, item := range defaults {
+		if item.Protocol == protocol {
+			return item.AccessPathID
+		}
+	}
+	return ""
+}
+
+func validateRemoteDefaultPath(path domain.NodeAccessPath, protocol string) string {
+	if !path.Enabled {
+		return "remote_default_path_disabled"
+	}
+	if path.Mode != domain.PathModeTCP || path.Protocol != domain.AccessProtocolTCP || path.ServiceType != domain.AccessServiceTCPAccess {
+		return "remote_default_path_must_be_tcp"
+	}
+	if path.RemoteProtocol != protocol {
+		return "remote_default_protocol_mismatch"
+	}
+	return ""
 }
 
 func validRemoteProtocol(protocol string) bool {

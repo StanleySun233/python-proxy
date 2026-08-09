@@ -53,9 +53,22 @@ type RemoteSessionInput struct {
 }
 
 type RemoteSession struct {
-	ID        string `json:"id"`
-	Token     string `json:"token"`
-	Protocol  string `json:"protocol"`
-	ExpiresAt string `json:"expiresAt"`
-	TunnelURL string `json:"tunnelUrl"`
+	ID           string `json:"id"`
+	Token        string `json:"token"`
+	Protocol     string `json:"protocol"`
+	AccessPathID string `json:"accessPathId"`
+	ExpiresAt    string `json:"expiresAt"`
+	TunnelURL    string `json:"tunnelUrl"`
+}
+
+type RemoteAccessDefault struct {
+	TenantID     string `json:"tenantId"`
+	Protocol     string `json:"protocol"`
+	AccessPathID string `json:"accessPathId"`
+	UpdatedBy    string `json:"updatedBy"`
+	UpdatedAt    string `json:"updatedAt"`
+}
+
+type SetRemoteAccessDefaultInput struct {
+	AccessPathID string `json:"accessPathId"`
 }
