@@ -295,12 +295,51 @@ button.console-user-card:hover {
 }
 
 @media (max-width: 760px) {
+  .console-shell {
+    padding: 10px;
+    gap: 10px;
+  }
+
   .console-topbar {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .console-topbar-actions {
     justify-content: flex-start;
+  }
+
+  .console-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .console-rail {
+    position: static;
+    min-width: 0;
+  }
+
+  .nav-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .menu-group {
+    min-width: 0;
+    padding: 4px;
+  }
+
+  .menu-group.is-active {
+    grid-column: 1 / -1;
+  }
+
+  .menu-link {
+    padding: 10px;
+  }
+
+  .submenu-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 0;
   }
 
   .account-settings,
