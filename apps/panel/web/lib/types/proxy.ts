@@ -6,7 +6,11 @@ export type Chain = ResourcePermissionMetadata & {
   name: string;
   destinationScope: string;
   enabled: boolean;
-  hops: string[];
+  hopGroups: ChainHopGroup[];
+};
+
+export type ChainHopGroup = {
+  candidates: string[];
 };
 
 export type DeleteImpactItem = {
@@ -62,6 +66,7 @@ export type ChainProbeResult = {
   status: ProbeResultStatus;
   message: string;
   resolvedHops: ChainProbeHop[];
+  blockingGroupIndex: number;
   blockingNodeId: string;
   blockingReason: string;
   targetHost: string;
@@ -74,7 +79,7 @@ export type ChainValidationResult = {
   errors: string[];
   warnings: string[];
   hopConnectivity: { from: string; to: string; reachable: boolean }[];
-  scopeOwnership: { scope: string; ownerNodeId: string; valid: boolean };
+  scopeOwnership: { scope: string; ownerNodeIds: string[]; valid: boolean };
 };
 
 export type CompiledChainHop = {
@@ -86,7 +91,7 @@ export type CompiledChainHop = {
 export type CompiledChainConfig = {
   chainId: string;
   name: string;
-  hops: CompiledChainHop[];
+  hopGroups: {candidates: CompiledChainHop[]}[];
   destinationScope: string;
   routingPath: string;
 };

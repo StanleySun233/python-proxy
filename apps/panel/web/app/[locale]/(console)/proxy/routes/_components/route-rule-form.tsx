@@ -160,7 +160,7 @@ export function RouteRuleForm({
           >
             <option value="">{t('common.selectChain')}</option>
             {chains.map((chain) => {
-              const hopCount = Array.isArray(chain.hops) ? chain.hops.length : 0;
+              const hopCount = Array.isArray(chain.hopGroups) ? chain.hopGroups.length : 0;
               const hopDisplay = hopCount > 0 ? ` (${Array.from({length: hopCount}, (_, i) => i + 1).join(' -> ')})` : '';
               return (
                 <option key={chain.id} value={chain.id}>

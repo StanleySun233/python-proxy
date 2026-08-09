@@ -33,7 +33,7 @@ export function CompilationPreviewModal({config, onClose}: CompilationPreviewMod
         <div className="field-stack">
           <span>{chainsT('routingPath')}</span>
           <div className="token-box">
-            <NodeTagPath labels={config.hops.map((hop) => hop.nodeName)} />
+            <NodeTagPath labels={config.hopGroups.map((group) => group.candidates.map((hop) => hop.nodeName).join(' / '))} />
           </div>
         </div>
 

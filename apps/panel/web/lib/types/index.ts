@@ -17,6 +17,7 @@ export type {
 export type {
   Chain,
   ChainDeleteImpact,
+  ChainHopGroup,
   ChainProbeHop,
   ChainProbeResult,
   ChainValidationResult,

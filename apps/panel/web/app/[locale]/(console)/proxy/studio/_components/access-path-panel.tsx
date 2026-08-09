@@ -21,6 +21,7 @@ type AccessPathFormState = {
   name: string;
   mode: string;
   protocol: string;
+  remoteProtocol: '' | 'ssh' | 'rdp';
   listenHost: string;
   listenPort: string;
   targetHost: string;
@@ -46,6 +47,7 @@ const emptyForm: AccessPathFormState = {
   name: '',
   mode: 'forward',
   protocol: 'http',
+  remoteProtocol: '',
   listenHost: '0.0.0.0',
   listenPort: '',
   targetHost: '',
@@ -101,6 +103,7 @@ function pathFormValues(path: NodeAccessPath): AccessPathFormState {
     name: path.name,
     mode: path.mode,
     protocol: path.protocol,
+    remoteProtocol: path.remoteProtocol,
     listenHost: path.listenHost || '0.0.0.0',
     listenPort: String(path.listenPort || ''),
     targetHost: path.targetHost || '',
@@ -119,10 +122,6 @@ function portNumber(value: string) {
 function isValidPort(value: string) {
   const port = portNumber(value);
   return Number.isInteger(port) && port >= 1 && port <= 65535;
-}
-
-function chainNodeIds(chain?: Chain) {
-  return chain?.hops || [];
 }
 
 function accessPathHealth(path: NodeAccessPath) {
@@ -166,18 +165,14 @@ function NodeTagPath({labels}: {labels: string[]}) {
   );
 }
 
-function submitPayload(form: AccessPathFormState, chains: Chain[]): NodeAccessPathPayload {
-  const chain = chains.find((item) => item.id === form.chainId);
-  const hops = chainNodeIds(chain);
+function submitPayload(form: AccessPathFormState): NodeAccessPathPayload {
   return {
     chainId: form.chainId,
     name: form.name.trim(),
     mode: form.mode as NodeAccessPathPayload['mode'],
     protocol: form.protocol as NodeAccessPathPayload['protocol'],
     serviceType: serviceTypeFor(form.mode) as NodeAccessPathPayload['serviceType'],
-    targetNodeId: hops[hops.length - 1] || '',
-    entryNodeId: hops[0] || '',
-    relayNodeIds: hops.length > 2 ? hops.slice(1, -1) : [],
+    remoteProtocol: form.mode === 'tcp' ? form.remoteProtocol : '',
     listenHost: form.listenHost.trim(),
     listenPort: portNumber(form.listenPort),
     targetProtocol: targetProtocolFor(form.mode, form.protocol),
@@ -285,7 +280,7 @@ export function AccessPathPanel({
   };
 
   const setMode = (mode: string) => {
-    setFormState((current) => ({...current, mode, protocol: normalizedProtocolForMode(mode, current.protocol)}));
+    setFormState((current) => ({...current, mode, protocol: normalizedProtocolForMode(mode, current.protocol), remoteProtocol: mode === 'tcp' ? current.remoteProtocol : ''}));
   };
 
   const handleEdit = (path: NodeAccessPath) => {
@@ -320,7 +315,7 @@ export function AccessPathPanel({
 
   const handleSubmit = () => {
     const chain = chainById.get(formState.chainId);
-    if (!chain || chain.hops.length === 0 || !formState.name.trim() || !formState.listenHost.trim() || !formState.targetHost.trim()) {
+    if (!chain || chain.hopGroups.length === 0 || !formState.name.trim() || !formState.listenHost.trim() || !formState.targetHost.trim()) {
       toast.error(accessPathsT('required'));
       return;
     }
@@ -332,7 +327,7 @@ export function AccessPathPanel({
       toast.error(`${accessPathsT('targetPort')}: ${t('common.invalid')}`);
       return;
     }
-    const payload = submitPayload(formState, chains);
+    const payload = submitPayload(formState);
     if (editingPath) {
       updateMutation.mutate(payload);
       return;
@@ -445,17 +440,17 @@ export function AccessPathPanel({
                       </td>
                       <td>
                         <div className="chain-list-actions">
-                          {isRemoteTCPPath(path) ? (
-                            <>
+                          {isRemoteTCPPath(path) && path.remoteProtocol === 'ssh' ? (
                               <Link className="secondary-button" href={`/remote/ssh?pathId=${encodeURIComponent(path.id)}`}>
                                 <Terminal size={14} />
                                 {t('shell.remoteSSH')}
                               </Link>
+                          ) : null}
+                          {isRemoteTCPPath(path) && path.remoteProtocol === 'rdp' ? (
                               <Link className="secondary-button" href={`/remote/rdp?pathId=${encodeURIComponent(path.id)}`}>
                                 <Monitor size={14} />
                                 {t('shell.remoteRDP')}
                               </Link>
-                            </>
                           ) : null}
                           {canWrite && canManage ? (
                             <button className="secondary-button" onClick={() => setGrantPath(path)} type="button">
@@ -497,7 +492,7 @@ export function AccessPathPanel({
             {selectedChain ? (
               <span className="tag-path">
                 <span className="muted-text">{accessPathsT('chainPath')}:</span>
-                <NodeTagPath labels={selectedChain.hops.map(nodeNameFor)} />
+                <NodeTagPath labels={selectedChain.hopGroups.map((group) => group.candidates.map(nodeNameFor).join(' / '))} />
               </span>
             ) : (
               <span className="muted-text">{accessPathsT('selectChain')}</span>
@@ -539,6 +534,17 @@ export function AccessPathPanel({
             {formProtocolOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
+        {formState.mode === 'tcp' ? (
+          <label className="field-stack">
+            <span>{accessPathsT('remoteProtocol')}</span>
+            <select className="field-select" onChange={(event) => setField('remoteProtocol', event.target.value as AccessPathFormState['remoteProtocol'])} value={formState.remoteProtocol}>
+              <option value="">{accessPathsT('remoteProtocolNone')}</option>
+              <option value="ssh">SSH</option>
+              <option value="rdp">RDP</option>
+            </select>
+            <small className="field-hint">{accessPathsT('remoteProtocolHint')}</small>
+          </label>
+        ) : null}
         <label className="field-stack">
           <span>{accessPathsT('listenHost')}</span>
           <input className="field-input" onChange={(event) => setField('listenHost', event.target.value)} placeholder={accessPathsT('listenHostPlaceholder')} value={formState.listenHost} />

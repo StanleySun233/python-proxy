@@ -14,7 +14,7 @@ import {DeleteConfirmationModal, DeleteImpactSection} from '@/components/delete-
 import {ResourceGrantModal} from '@/components/resource-grant-modal';
 import {useAuth} from '@/components/auth-provider';
 import {createChain, deleteChain, getChainDeleteImpact, getChains, getNodes, getScopes, previewChain, probeChain, updateChain} from '@/lib/api';
-import {Chain, ChainDeleteImpact, ChainPreviewResult, ChainProbeResult, CompiledChainConfig} from '@/lib/types';
+import {Chain, ChainDeleteImpact, ChainHopGroup, ChainPreviewResult, ChainProbeResult, CompiledChainConfig} from '@/lib/types';
 import {formatControlPlaneError} from '@/lib/presentation';
 
 import {ChainEditor} from './_components/chain-editor';
@@ -65,6 +65,23 @@ function NodeTagPath({labels}: {labels: string[]}) {
   );
 }
 
+function ChainGroupPath({groups, nodeLabelFor}: {groups: ChainHopGroup[]; nodeLabelFor: (nodeID: string) => string}) {
+  return (
+    <span className="tag-path chain-group-path">
+      {groups.map((group, index) => (
+        <span className="tag-path-step" key={`${group.candidates.join('-')}-${index}`}>
+          {index > 0 ? <span className="tag-path-arrow">→</span> : null}
+          <span className="chain-group-pill">
+            {group.candidates.map((nodeID, candidateIndex) => (
+              <span key={nodeID}>{candidateIndex > 0 ? <span className="chain-candidate-divider">/</span> : null}{nodeLabelFor(nodeID)}</span>
+            ))}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function ProbeResultToast({
   title,
   reason,
@@ -106,7 +123,7 @@ export default function ChainsPage() {
   const [grantChain, setGrantChain] = useState<Chain | null>(null);
   const [chainName, setChainName] = useState('');
   const [destinationScope, setDestinationScope] = useState('');
-  const [hops, setHops] = useState<string[]>([]);
+	const [hopGroups, setHopGroups] = useState<ChainHopGroup[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<CompiledChainConfig | null>(null);
   const [deletingChain, setDeletingChain] = useState<Chain | null>(null);
@@ -135,7 +152,7 @@ export default function ChainsPage() {
   });
 
   const createChainMutation = useMutation({
-    mutationFn: (payload: {name: string; destinationScope: string; hops: string[]}) => createChain(accessToken, activeTenantId, payload),
+	mutationFn: (payload: {name: string; destinationScope: string; hopGroups: ChainHopGroup[]}) => createChain(accessToken, activeTenantId, payload),
     onSuccess: () => {
       toast.success(chainsT('createSuccess'));
       queryClient.invalidateQueries({queryKey: ['proxy-chains']});
@@ -147,11 +164,11 @@ export default function ChainsPage() {
   });
 
   const updateChainMutation = useMutation({
-    mutationFn: (payload: {chainID: string; name: string; destinationScope: string; hops: string[]; enabled: boolean}) =>
+	mutationFn: (payload: {chainID: string; name: string; destinationScope: string; hopGroups: ChainHopGroup[]; enabled: boolean}) =>
       updateChain(accessToken, activeTenantId, payload.chainID, {
         name: payload.name,
         destinationScope: payload.destinationScope,
-        hops: payload.hops,
+		  hopGroups: payload.hopGroups,
         enabled: payload.enabled
       }),
     onSuccess: () => {
@@ -186,7 +203,7 @@ export default function ChainsPage() {
   });
 
   const previewMutation = useMutation({
-    mutationFn: (payload: {name: string; destinationScope: string; hops: string[]}) => previewChain(accessToken, activeTenantId, payload),
+	mutationFn: (payload: {name: string; destinationScope: string; hopGroups: ChainHopGroup[]}) => previewChain(accessToken, activeTenantId, payload),
     onSuccess: (result: ChainPreviewResult) => {
       setPreviewConfig(result.compiledConfig);
       setPreviewOpen(true);
@@ -225,12 +242,12 @@ export default function ChainsPage() {
       setEditingChain(chain);
       setChainName(chain.name);
       setDestinationScope(chain.destinationScope);
-      setHops(chain.hops);
+	  setHopGroups(chain.hopGroups);
     } else {
       setEditingChain(null);
       setChainName('');
       setDestinationScope('');
-      setHops([]);
+	  setHopGroups([]);
     }
     setEditorOpen(true);
   };
@@ -240,7 +257,7 @@ export default function ChainsPage() {
     setEditingChain(null);
     setChainName('');
     setDestinationScope('');
-    setHops([]);
+	setHopGroups([]);
   };
 
   const handleSaveChain = () => {
@@ -249,7 +266,7 @@ export default function ChainsPage() {
         chainID: editingChain.id,
         name: chainName,
         destinationScope,
-        hops,
+		hopGroups,
         enabled: editingChain.enabled
       });
       return;
@@ -257,7 +274,7 @@ export default function ChainsPage() {
     createChainMutation.mutate({
       name: chainName,
       destinationScope,
-      hops
+	  hopGroups
     });
   };
 
@@ -265,7 +282,7 @@ export default function ChainsPage() {
     previewMutation.mutate({
       name: chainName,
       destinationScope,
-      hops
+	  hopGroups
     });
   };
 
@@ -286,7 +303,7 @@ export default function ChainsPage() {
     return chains.filter((chain) =>
       (!nameFilter.trim() || chain.name.toLowerCase().includes(nameFilter.trim().toLowerCase())) &&
       (!destinationScopeFilter.trim() || scopeLabelFor(chain.destinationScope).toLowerCase().includes(destinationScopeFilter.trim().toLowerCase())) &&
-      (!hopsFilter.trim() || chain.hops.map(nodeLabelFor).join(' ').toLowerCase().includes(hopsFilter.trim().toLowerCase())) &&
+	  (!hopsFilter.trim() || chain.hopGroups.flatMap((group) => group.candidates).map(nodeLabelFor).join(' ').toLowerCase().includes(hopsFilter.trim().toLowerCase())) &&
       (!statusFilter || (statusFilter === 'enabled' ? chain.enabled : !chain.enabled))
     );
   }, [chains, destinationScopeFilter, hopsFilter, nameFilter, nodeNameById, scopeNameById, statusFilter]);
@@ -365,7 +382,7 @@ export default function ChainsPage() {
                         <td>
                           <NameTag kind="chain">{chain.name}</NameTag>
                         </td>
-                        <td><NodeTagPath labels={chain.hops.map(nodeLabelFor)} /></td>
+						<td><ChainGroupPath groups={chain.hopGroups} nodeLabelFor={nodeLabelFor} /></td>
                         <td><NameTag kind="scope">{scopeLabelFor(chain.destinationScope)}</NameTag></td>
                         <td>
                           <span className={`badge ${chain.enabled ? 'is-good' : 'is-warn'}`}>{chain.enabled ? t('common.enabled') : t('common.disabled')}</span>
@@ -425,11 +442,11 @@ export default function ChainsPage() {
               activeTenantId={activeTenantId}
               chainName={chainName}
               destinationScope={destinationScope}
-              hops={hops}
+			  hopGroups={hopGroups}
               nodes={nodes}
               scopes={scopes}
               onCancel={handleCloseEditor}
-              onHopsChange={setHops}
+			  onHopGroupsChange={setHopGroups}
               onNameChange={setChainName}
               onPreview={handlePreview}
               onSave={handleSaveChain}

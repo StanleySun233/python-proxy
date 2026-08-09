@@ -72,9 +72,12 @@ export type NodeAccessPath = ResourcePermissionMetadata & {
   mode: PathMode;
   protocol: AccessProtocol;
   serviceType: AccessServiceType;
+  remoteProtocol: '' | 'ssh' | 'rdp';
   targetNodeId: string;
   entryNodeId: string;
   relayNodeIds: string[];
+  entrypoints: {nodeId: string; host: string; port: number; status: string}[];
+  topologyGroups: {candidates: string[]}[];
   listenHost: string;
   listenPort: number;
   targetProtocol: string;
@@ -96,7 +99,7 @@ export type NodeAccessPathDeleteImpact = {
   };
 };
 
-export type NodeAccessPathPayload = Omit<NodeAccessPath, 'id' | 'enabled'> & {
+export type NodeAccessPathPayload = Omit<NodeAccessPath, 'id' | 'enabled' | 'targetNodeId' | 'entryNodeId' | 'relayNodeIds' | 'entrypoints' | 'topologyGroups' | keyof ResourcePermissionMetadata> & {
   enabled?: boolean;
 };
 

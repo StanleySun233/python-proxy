@@ -1,12 +1,12 @@
 import { request } from './client';
-import type { Chain, ChainDeleteImpact, ChainProbeResult, ChainValidationResult, ChainPreviewResult, RouteRule, RouteRuleGroup, RouteRuleGroupDeleteImpact, RouteRuleValidationResult, Scope } from '@/lib/types/proxy';
+import type { Chain, ChainDeleteImpact, ChainHopGroup, ChainProbeResult, ChainValidationResult, ChainPreviewResult, RouteRule, RouteRuleGroup, RouteRuleGroupDeleteImpact, RouteRuleValidationResult, Scope } from '@/lib/types/proxy';
 import type { NodeAccessPath, NodeAccessPathDeleteImpact, NodeAccessPathPayload, NodeLink } from '@/lib/types/nodes';
 
 export function getChains(accessToken: string, tenantId: string | null) {
   return request<Chain[]>('/proxy', {accessToken, tenantId});
 }
 
-export function createChain(accessToken: string, tenantId: string | null, payload: {name: string; destinationScope: string; hops: string[]}) {
+export function createChain(accessToken: string, tenantId: string | null, payload: {name: string; destinationScope: string; hopGroups: ChainHopGroup[]}) {
   return request<Chain>('/proxy', {
     method: 'POST',
     accessToken,
@@ -15,7 +15,7 @@ export function createChain(accessToken: string, tenantId: string | null, payloa
   });
 }
 
-export function updateChain(accessToken: string, tenantId: string | null, chainID: string, payload: {name: string; destinationScope: string; hops: string[]; enabled: boolean}) {
+export function updateChain(accessToken: string, tenantId: string | null, chainID: string, payload: {name: string; destinationScope: string; hopGroups: ChainHopGroup[]; enabled: boolean}) {
   return request<Chain>(`/proxy/${chainID}`, {
     method: 'PATCH',
     accessToken,
@@ -47,7 +47,7 @@ export function probeChain(accessToken: string, tenantId: string | null, chainID
   });
 }
 
-export function validateChain(accessToken: string, tenantId: string | null, payload: {name: string; destinationScope: string; hops: string[]}) {
+export function validateChain(accessToken: string, tenantId: string | null, payload: {name: string; destinationScope: string; hopGroups: ChainHopGroup[]}) {
   return request<ChainValidationResult>('/proxy/validate', {
     method: 'POST',
     accessToken,
@@ -56,7 +56,7 @@ export function validateChain(accessToken: string, tenantId: string | null, payl
   });
 }
 
-export function previewChain(accessToken: string, tenantId: string | null, payload: {name: string; destinationScope: string; hops: string[]}) {
+export function previewChain(accessToken: string, tenantId: string | null, payload: {name: string; destinationScope: string; hopGroups: ChainHopGroup[]}) {
   return request<ChainPreviewResult>('/proxy/preview', {
     method: 'POST',
     accessToken,
