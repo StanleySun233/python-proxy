@@ -586,8 +586,9 @@ func TestForwardChainViaStreamStreamsContentLengthMismatch(t *testing.T) {
 		Nodes: []domain.Node{
 			{ID: "node-2", Name: "next-hop", Enabled: true, Status: "healthy"},
 		},
+		Links: []domain.NodeLink{{SourceNodeID: "node-1", TargetNodeID: "node-2"}},
 		Chains: []domain.Chain{
-			{ID: "chain-1", Name: "chain", Enabled: true, Hops: []string{"node-1", "node-2"}},
+			{ID: "chain-1", Name: "chain", Enabled: true, HopGroups: []domain.ChainHopGroup{{Candidates: []string{"node-1"}}, {Candidates: []string{"node-2"}}}},
 		},
 		RouteRules: []domain.RouteRule{
 			{ID: "default", MatchType: domain.MatchTypeDefault, ActionType: domain.ActionTypeChain, ChainID: "chain-1", Enabled: true},
@@ -625,8 +626,9 @@ func TestForwardChainViaStreamServesCacheAfterStreamOpenError(t *testing.T) {
 		Nodes: []domain.Node{
 			{ID: "node-2", Name: "next-hop", Enabled: true, Status: "healthy"},
 		},
+		Links: []domain.NodeLink{{SourceNodeID: "node-1", TargetNodeID: "node-2"}},
 		Chains: []domain.Chain{
-			{ID: "chain-1", Name: "chain", Enabled: true, Hops: []string{"node-1", "node-2"}},
+			{ID: "chain-1", Name: "chain", Enabled: true, HopGroups: []domain.ChainHopGroup{{Candidates: []string{"node-1"}}, {Candidates: []string{"node-2"}}}},
 		},
 		RouteRules: []domain.RouteRule{
 			{ID: "default", MatchType: domain.MatchTypeDefault, ActionType: domain.ActionTypeChain, ChainID: "chain-1", Enabled: true},
@@ -898,8 +900,9 @@ func TestForwardProxyTokenValidationIncludesRouteContext(t *testing.T) {
 			{ID: "edge", Enabled: true},
 			{ID: "target", Enabled: true},
 		},
+		Links: []domain.NodeLink{{SourceNodeID: "edge", TargetNodeID: "target"}},
 		Chains: []domain.Chain{
-			{ID: "chain-1", Enabled: true, Hops: []string{"edge", "target"}},
+			{ID: "chain-1", Enabled: true, HopGroups: []domain.ChainHopGroup{{Candidates: []string{"edge"}}, {Candidates: []string{"target"}}}},
 		},
 		RouteRules: []domain.RouteRule{
 			{ID: "route-1", MatchType: domain.MatchTypeDefault, ActionType: domain.ActionTypeChain, ChainID: "chain-1", AccessPathID: "path-1", Enabled: true},

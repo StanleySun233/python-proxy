@@ -7,25 +7,26 @@ import (
 )
 
 const (
-	proxyErrorConnectFailed             = "connect_failed"
-	proxyErrorForwardFailed             = "forward_failed"
-	proxyErrorHijackFailed              = "hijack_failed"
-	proxyErrorHijackNotSupported        = "hijack_not_supported"
-	proxyErrorInvalidChainRoute         = "invalid_chain_route"
-	proxyErrorNextHopConnectFailed      = "next_hop_connect_failed"
-	proxyErrorNextHopUnreachable        = "next_hop_unreachable"
-	proxyErrorProxyAuthRequired         = "proxy_auth_required"
-	proxyErrorRelayTunnelUnavailable    = "relay_tunnel_unavailable"
-	proxyErrorReverseAuthRequired       = "reverse_auth_required"
-	proxyErrorReverseConnectFailed      = "reverse_connect_failed"
-	proxyErrorReverseForwardFailed      = "reverse_forward_failed"
-	proxyErrorReverseUpgradeWriteFailed = "reverse_upgrade_write_failed"
-	proxyErrorRouteNotFound             = "route_not_found"
-	proxyErrorStreamResponseFailed      = "stream_response_failed"
-	proxyErrorUnsupportedRouteAction    = "unsupported_route_action"
-	proxyErrorUpgradeRejected           = "upgrade_rejected"
-	proxyErrorUpgradeResponseFailed     = "upgrade_response_failed"
-	proxyErrorUpgradeWriteFailed        = "upgrade_write_failed"
+	proxyErrorConnectFailed              = "connect_failed"
+	proxyErrorChainCandidatesUnavailable = "chain_candidates_unavailable"
+	proxyErrorForwardFailed              = "forward_failed"
+	proxyErrorHijackFailed               = "hijack_failed"
+	proxyErrorHijackNotSupported         = "hijack_not_supported"
+	proxyErrorInvalidChainRoute          = "invalid_chain_route"
+	proxyErrorNextHopConnectFailed       = "next_hop_connect_failed"
+	proxyErrorNextHopUnreachable         = "next_hop_unreachable"
+	proxyErrorProxyAuthRequired          = "proxy_auth_required"
+	proxyErrorRelayTunnelUnavailable     = "relay_tunnel_unavailable"
+	proxyErrorReverseAuthRequired        = "reverse_auth_required"
+	proxyErrorReverseConnectFailed       = "reverse_connect_failed"
+	proxyErrorReverseForwardFailed       = "reverse_forward_failed"
+	proxyErrorReverseUpgradeWriteFailed  = "reverse_upgrade_write_failed"
+	proxyErrorRouteNotFound              = "route_not_found"
+	proxyErrorStreamResponseFailed       = "stream_response_failed"
+	proxyErrorUnsupportedRouteAction     = "unsupported_route_action"
+	proxyErrorUpgradeRejected            = "upgrade_rejected"
+	proxyErrorUpgradeResponseFailed      = "upgrade_response_failed"
+	proxyErrorUpgradeWriteFailed         = "upgrade_write_failed"
 )
 
 type proxyErrorContent struct {
@@ -47,6 +48,15 @@ type proxyErrorPageData struct {
 }
 
 var proxyErrorCatalog = map[string]proxyErrorContent{
+	proxyErrorChainCandidatesUnavailable: {
+		Title:   "Chain Candidates Unavailable",
+		Summary: "OneProxy tried every viable node at the next chain position but could not establish a connection.",
+		Checks: []string{
+			"Check the health of primary and standby nodes in the blocked chain group.",
+			"Verify each candidate has a connected tunnel, direct peer, or reachable public endpoint.",
+			"Review link diagnostics for the failed candidate attempts.",
+		},
+	},
 	proxyErrorConnectFailed: {
 		Title:   "Target Connection Failed",
 		Summary: "OneProxy could not open a direct TCP connection to the requested target.",

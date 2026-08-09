@@ -38,7 +38,7 @@ func TestStoreUpdateReadsSnapshotPayload(t *testing.T) {
 
 func TestStoreUpdateReadsTenantWrappedPayload(t *testing.T) {
 	store := New("")
-	payload := `{"snapshots":[{"tenantId":"1","policyRevisionId":"3","payload":{"nodes":[{"id":"1"}],"links":[],"chains":[{"id":"chain-1","hops":["1","2"]}],"routeRules":[{"id":"rule-1","matchType":"ip_cidr","matchValue":"172.20.116.0/24","actionType":"chain","chainId":"chain-1"}]}}]}`
+	payload := `{"snapshots":[{"tenantId":"1","policyRevisionId":"3","payload":{"nodes":[{"id":"1"}],"links":[],"chains":[{"id":"chain-1","hopGroups":[{"candidates":["1"]},{"candidates":["2"]}]}],"routeRules":[{"id":"rule-1","matchType":"ip_cidr","matchValue":"172.20.116.0/24","actionType":"chain","chainId":"chain-1"}]}}]}`
 
 	if err := store.Update("3", payload); err != nil {
 		t.Fatal(err)

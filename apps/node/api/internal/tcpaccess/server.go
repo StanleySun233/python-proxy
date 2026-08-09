@@ -36,12 +36,18 @@ type Server struct {
 }
 
 type AuthFrame struct {
-	Token               string   `json:"token"`
-	TargetHost          string   `json:"targetHost"`
-	TargetPort          int      `json:"targetPort"`
-	NextNodeID          string   `json:"nextNodeId,omitempty"`
+	Token               string           `json:"token"`
+	TargetHost          string           `json:"targetHost"`
+	TargetPort          int              `json:"targetPort"`
+	NextNodeID          string           `json:"nextNodeId,omitempty"`
+	RemainingHopNodeIDs []string         `json:"remainingHopNodeIds,omitempty"`
+	ChainNodeIDs        []string         `json:"chainNodeIds,omitempty"`
+	ChainCandidates     []ChainCandidate `json:"chainCandidates,omitempty"`
+}
+
+type ChainCandidate struct {
+	NextNodeID          string   `json:"nextNodeId"`
 	RemainingHopNodeIDs []string `json:"remainingHopNodeIds,omitempty"`
-	ChainNodeIDs        []string `json:"chainNodeIds,omitempty"`
 }
 
 type responseFrame struct {
@@ -139,22 +145,35 @@ func (s *Server) connect(ctx context.Context, frame AuthFrame) (net.Conn, error)
 	if frame.TargetHost == "" || frame.TargetPort <= 0 || frame.TargetPort > 65535 {
 		return nil, errors.New("invalid_target")
 	}
-	nextNodeID, remaining := chain(frame)
-	if nextNodeID != "" {
+	candidates := chainCandidates(frame)
+	if len(candidates) > 0 {
 		if s.streams == nil {
 			return nil, errors.New("stream_registry_unavailable")
 		}
-		conn, err := s.streams.OpenStream(nextNodeID, remaining, frame.TargetHost, frame.TargetPort)
-		if err != nil {
-			return nil, errors.New("connect_failed")
+		for _, candidate := range candidates {
+			conn, err := s.streams.OpenStream(candidate.NextNodeID, candidate.RemainingHopNodeIDs, frame.TargetHost, frame.TargetPort)
+			if err == nil {
+				return conn, nil
+			}
 		}
-		return conn, nil
+		return nil, errors.New("chain_candidates_unavailable")
 	}
 	conn, err := s.dial(ctx, frame.TargetHost, frame.TargetPort)
 	if err != nil {
 		return nil, errors.New("connect_failed")
 	}
 	return conn, nil
+}
+
+func chainCandidates(frame AuthFrame) []ChainCandidate {
+	if len(frame.ChainCandidates) > 0 {
+		return append([]ChainCandidate(nil), frame.ChainCandidates...)
+	}
+	nextNodeID, remaining := chain(frame)
+	if nextNodeID == "" {
+		return nil
+	}
+	return []ChainCandidate{{NextNodeID: nextNodeID, RemainingHopNodeIDs: remaining}}
 }
 
 func chain(frame AuthFrame) (string, []string) {

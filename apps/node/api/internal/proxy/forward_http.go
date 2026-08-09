@@ -348,7 +348,7 @@ func (s *Server) forwardViaStream(w http.ResponseWriter, req *http.Request, hop 
 	uploadBytes := forwardUploadBytes(req, body)
 	tracker.markForward()
 	streamStarted := time.Now().UTC()
-	resp, err := s.roundTripStreamWithRetry(req, hop, targetHost, targetPort, body, bodyStream)
+	resp, _, err := s.roundTripStreamCandidatesWithRetry(req, []chainHop{hop}, targetHost, targetPort, body, bodyStream)
 	tracker.addLinkTiming(s.nodeIDGetter(), hop.node.ID, streamStarted)
 	if err != nil {
 		errorCode := proxyErrorForStreamFailure(err)
@@ -367,19 +367,94 @@ func (s *Server) forwardViaStream(w http.ResponseWriter, req *http.Request, hop 
 	tracker.finish(uploadBytes, downloadBytes, domain.ProxySessionStatusOK, "", "")
 }
 
-func (s *Server) roundTripStreamWithRetry(req *http.Request, hop chainHop, targetHost string, targetPort int, body []byte, bodyStream io.ReadCloser) (forwardResponse, error) {
+func (s *Server) forwardViaCandidates(w http.ResponseWriter, req *http.Request, hops []chainHop, tracker *proxySessionTracker) {
+	body, bodyStream, err := s.forwardRequestBody(req)
+	if err != nil {
+		tracker.finish(0, 0, domain.ProxySessionStatusError, proxyErrorStreamResponseFailed, proxyErrorStreamResponseFailed)
+		writeProxyError(w, req, proxyErrorStreamResponseFailed, http.StatusBadGateway)
+		return
+	}
+	uploadBytes := forwardUploadBytes(req, body)
+	targetHost, targetPort := targetAddress(req)
+	tracker.markForward()
+	var response forwardResponse
+	var selected chainHop
+	var lastErr error
+	streamOnly := true
+	for _, hop := range hops {
+		if !s.shouldUseStream(hop.node) {
+			streamOnly = false
+			break
+		}
+	}
+	if streamOnly {
+		started := time.Now().UTC()
+		response, selected, lastErr = s.roundTripStreamCandidatesWithRetry(req, hops, targetHost, targetPort, body, bodyStream)
+		if selected.node.ID != "" {
+			tracker.addLinkTiming(s.nodeIDGetter(), selected.node.ID, started)
+		}
+	}
+	for _, hop := range hops {
+		if streamOnly {
+			break
+		}
+		started := time.Now().UTC()
+		if s.shouldUseStream(hop.node) {
+			response, _, lastErr = s.roundTripStreamCandidatesWithRetry(req, []chainHop{hop}, targetHost, targetPort, body, bodyStream)
+		} else {
+			response, lastErr = s.roundTripProxyCandidate(req, hop.node, body, bodyStream)
+		}
+		tracker.addLinkTiming(s.nodeIDGetter(), hop.node.ID, started)
+		if lastErr == nil {
+			selected = hop
+			break
+		}
+		if bodyStream != nil {
+			break
+		}
+	}
+	if lastErr != nil || selected.node.ID == "" {
+		if s.writeCachedResponseOnError(w, req, body, proxyErrorChainCandidatesUnavailable, tracker) {
+			return
+		}
+		log.Printf("proxy forward failed mode=chain_candidates method=%s target=%s uploadBytes=%d err=%v", req.Method, requestLogTarget(req), uploadBytes, lastErr)
+		tracker.finish(uploadBytes, 0, domain.ProxySessionStatusError, proxyErrorChainCandidatesUnavailable, proxyErrorChainCandidatesUnavailable)
+		writeProxyError(w, req, proxyErrorChainCandidatesUnavailable, http.StatusBadGateway)
+		return
+	}
+	tracker.markResponseReceive()
+	tracker.markStatusCode(response.statusCode)
+	s.storeResponseCache(req, body, response)
+	downloadBytes := writeForwardResponse(w, response)
+	tracker.finish(uploadBytes, downloadBytes, domain.ProxySessionStatusOK, "", "")
+}
+
+func (s *Server) roundTripProxyCandidate(req *http.Request, nextHop domain.Node, body []byte, bodyStream io.ReadCloser) (forwardResponse, error) {
+	nextHopAuth := nextHopProxyAuthorization(req)
+	if nextHopAuth == "" {
+		return forwardResponse{}, errors.New(proxyErrorProxyAuthRequired)
+	}
+	proxyURL := &url.URL{Scheme: "http", Host: net.JoinHostPort(nextHop.PublicHost, strconv.Itoa(nextHop.PublicPort))}
+	transport := newForwardTransport(proxyURL)
+	defer transport.CloseIdleConnections()
+	return s.roundTripWithRetry(transport, req, body, bodyStream, nextHopAuth)
+}
+
+func (s *Server) roundTripStreamCandidatesWithRetry(req *http.Request, hops []chainHop, targetHost string, targetPort int, body []byte, bodyStream io.ReadCloser) (forwardResponse, chainHop, error) {
 	attempts := forwardAttemptCount(req.Method, bodyStream == nil)
 	var lastErr error
+	var selected chainHop
 	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			time.Sleep(forwardRetryBackoffs[attempt-1])
 		}
-		streamConn, err := openDirectFirstStream(req.Context(), s.directStream, s.fallbackStreamOpener(), hop, targetHost, targetPort)
+		streamConn, hop, err := openCandidateStream(req.Context(), s.directStream, s.fallbackStreamOpener(), hops, targetHost, targetPort)
 		if err != nil {
-			log.Printf("proxy forward attempt failed mode=stream_open attempt=%d method=%s target=%s nextHop=%s remainingHops=%v err=%v", attempt+1, req.Method, requestLogTarget(req), hop.node.ID, hop.remainingHops, err)
+			log.Printf("proxy forward attempt failed mode=stream_open attempt=%d method=%s target=%s err=%v", attempt+1, req.Method, requestLogTarget(req), err)
 			lastErr = err
 			continue
 		}
+		selected = hop
 		outbound := newStreamForwardRequest(req, body, bodyStream)
 		if err := outbound.Write(streamConn); err != nil {
 			_ = streamConn.Close()
@@ -413,13 +488,13 @@ func (s *Server) roundTripStreamWithRetry(req *http.Request, hop chainHop, targe
 		}
 		if forwarded.stream != nil {
 			forwarded.stream = closingReadCloser{ReadCloser: forwarded.stream, close: streamConn.Close}
-			return forwarded, nil
+			return forwarded, selected, nil
 		}
 		_ = resp.Body.Close()
 		_ = streamConn.Close()
-		return forwarded, nil
+		return forwarded, selected, nil
 	}
-	return forwardResponse{}, lastErr
+	return forwardResponse{}, selected, lastErr
 }
 
 func newStreamForwardRequest(req *http.Request, body []byte, bodyStream io.ReadCloser) *http.Request {

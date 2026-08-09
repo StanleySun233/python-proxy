@@ -45,6 +45,21 @@ func openDirectFirstStream(ctx context.Context, direct directPeerStreamOpener, f
 	return conn, err
 }
 
+func openCandidateStream(ctx context.Context, direct directPeerStreamOpener, fallback fallbackStreamOpener, hops []chainHop, targetHost string, targetPort int) (net.Conn, chainHop, error) {
+	var lastErr error
+	for _, hop := range hops {
+		conn, err := openDirectFirstStream(ctx, direct, fallback, hop, targetHost, targetPort)
+		if err == nil {
+			return conn, hop, nil
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = errStreamFallbackUnavailable
+	}
+	return nil, chainHop{}, fmt.Errorf("chain_candidates_unavailable: %w", lastErr)
+}
+
 func (s *Server) fallbackStreamOpener() fallbackStreamOpener {
 	if s.tunnelRegistry == nil {
 		return nil

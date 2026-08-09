@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"reflect"
@@ -35,9 +36,15 @@ type fakeStreamOpener struct {
 	remaining  []string
 	targetHost string
 	targetPort int
+	errors     map[string]error
+	attempted  []string
 }
 
 func (o *fakeStreamOpener) OpenStream(nextNodeID string, remaining []string, targetHost string, targetPort int) (net.Conn, error) {
+	o.attempted = append(o.attempted, nextNodeID)
+	if err := o.errors[nextNodeID]; err != nil {
+		return nil, err
+	}
 	o.nextNodeID = nextNodeID
 	o.remaining = append([]string(nil), remaining...)
 	o.targetHost = targetHost
@@ -45,6 +52,32 @@ func (o *fakeStreamOpener) OpenStream(nextNodeID string, remaining []string, tar
 	left, right := net.Pipe()
 	go echoConn(right)
 	return left, nil
+}
+
+func TestChainedTCPAccessTriesNextCandidate(t *testing.T) {
+	opener := &fakeStreamOpener{errors: map[string]error{"node-2": errors.New("down")}}
+	validator := &testTokenValidator{valid: true}
+	server := New(proxy.NewTokenAuthorizer(proxy.AuthConfig{Validator: validator}), opener)
+	listener := listenTCPAccess(t, server)
+	defer listener.Close()
+
+	conn := dialTCPAccess(t, listener.Addr().String(), AuthFrame{
+		Token:      "chain-token",
+		TargetHost: "10.0.0.9",
+		TargetPort: 22,
+		ChainCandidates: []ChainCandidate{
+			{NextNodeID: "node-2", RemainingHopNodeIDs: []string{"node-3"}},
+			{NextNodeID: "node-4", RemainingHopNodeIDs: []string{"node-3"}},
+		},
+	})
+	defer conn.Close()
+
+	if got := roundTrip(t, conn, "ssh-probe"); got != "ssh-probe" {
+		t.Fatalf("echo = %q", got)
+	}
+	if !reflect.DeepEqual(opener.attempted, []string{"node-2", "node-4"}) {
+		t.Fatalf("attempted = %v", opener.attempted)
+	}
 }
 
 func TestDirectTCPAccessEcho(t *testing.T) {

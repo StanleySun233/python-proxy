@@ -8,12 +8,13 @@ import (
 )
 
 func (s *Server) forwardChain(w http.ResponseWriter, req *http.Request, snapshot policystore.Snapshot, rule domain.RouteRule, tracker *proxySessionTracker) {
-	hop, ok := s.resolveChainHop(snapshot, rule.ChainID)
-	if !ok {
+	hops, ok := s.resolveChainCandidates(snapshot, rule.ChainID)
+	if !ok || len(hops) == 0 {
 		tracker.finish(0, 0, domain.ProxySessionStatusError, proxyErrorInvalidChainRoute, proxyErrorInvalidChainRoute)
 		writeProxyError(w, req, proxyErrorInvalidChainRoute, http.StatusBadGateway)
 		return
 	}
+	hop := hops[0]
 	if hop.isLast {
 		if isWebSocketUpgrade(req) {
 			s.upgradeDirect(w, req, tracker)
@@ -26,32 +27,15 @@ func (s *Server) forwardChain(w http.ResponseWriter, req *http.Request, snapshot
 		s.forwardDirect(w, req, tracker)
 		return
 	}
-	if s.shouldUseStream(hop.node) {
-		if isWebSocketUpgrade(req) {
-			s.upgradeViaStream(w, req, hop, tracker)
-			return
-		}
-		if req.Method == http.MethodConnect {
-			s.tunnelViaStream(w, req, hop, tracker)
-			return
-		}
-		s.forwardViaStream(w, req, hop, tracker)
-		return
-	}
-	if hop.node.PublicHost == "" || hop.node.PublicPort <= 0 {
-		tracker.finish(0, 0, domain.ProxySessionStatusError, proxyErrorNextHopUnreachable, proxyErrorNextHopUnreachable)
-		writeProxyError(w, req, proxyErrorNextHopUnreachable, http.StatusBadGateway)
+	if isWebSocketUpgrade(req) {
+		s.upgradeViaCandidates(w, req, hops, tracker)
 		return
 	}
 	if req.Method == http.MethodConnect {
-		s.tunnelViaProxy(w, req, hop.node, tracker)
+		s.tunnelViaCandidates(w, req, hops, tracker)
 		return
 	}
-	if isWebSocketUpgrade(req) {
-		s.upgradeViaProxy(w, req, hop.node, tracker)
-		return
-	}
-	s.forwardViaProxy(w, req, hop.node, tracker)
+	s.forwardViaCandidates(w, req, hops, tracker)
 }
 
 func (s *Server) shouldUseStream(nextHop domain.Node) bool {
@@ -68,7 +52,7 @@ func (s *Server) hasDirectPeer(nodeID string) bool {
 	return ok && available.HasDirectPeer(nodeID)
 }
 
-func (s *Server) resolveChainHop(snapshot policystore.Snapshot, chainID string) (chainHop, bool) {
+func (s *Server) resolveChainCandidates(snapshot policystore.Snapshot, chainID string) ([]chainHop, bool) {
 	var chain domain.Chain
 	found := false
 	for _, item := range snapshot.Chains {
@@ -78,31 +62,73 @@ func (s *Server) resolveChainHop(snapshot policystore.Snapshot, chainID string) 
 			break
 		}
 	}
-	if !found || len(chain.Hops) == 0 {
-		return chainHop{}, false
+	if !found || len(chain.HopGroups) == 0 {
+		return nil, false
 	}
 	index := -1
 	nodeID := s.nodeIDGetter()
-	for i, hop := range chain.Hops {
-		if hop == nodeID {
-			index = i
+	for i, group := range chain.HopGroups {
+		for _, candidateID := range group.Candidates {
+			if candidateID == nodeID {
+				index = i
+				break
+			}
+		}
+		if index >= 0 {
 			break
 		}
 	}
 	if index == -1 {
-		return chainHop{}, false
+		return nil, false
 	}
-	if index == len(chain.Hops)-1 {
-		return chainHop{isLast: true}, true
+	if index == len(chain.HopGroups)-1 {
+		return []chainHop{{isLast: true}}, true
 	}
-	nextHopID := chain.Hops[index+1]
+	nodes := make(map[string]domain.Node, len(snapshot.Nodes))
 	for _, node := range snapshot.Nodes {
-		if node.ID == nextHopID {
-			return chainHop{
-				node:          node,
-				remainingHops: append([]string(nil), chain.Hops[index+2:]...),
-			}, true
+		if node.Enabled {
+			nodes[node.ID] = node
 		}
 	}
-	return chainHop{}, false
+	candidates := make([]chainHop, 0, len(chain.HopGroups[index+1].Candidates))
+	for _, candidateID := range chain.HopGroups[index+1].Candidates {
+		node, exists := nodes[candidateID]
+		if !exists || !chainLinkExists(snapshot.Links, nodeID, candidateID) || !s.candidateUsable(node) {
+			continue
+		}
+		remaining, connected := resolveRemainingChainPath(chain.HopGroups, snapshot.Links, nodes, index+1, candidateID)
+		if connected {
+			candidates = append(candidates, chainHop{node: node, remainingHops: remaining})
+		}
+	}
+	return candidates, len(candidates) > 0
+}
+
+func (s *Server) candidateUsable(candidate domain.Node) bool {
+	return s.shouldUseTunnel(candidate) || s.hasDirectPeer(candidate.ID) || (candidate.PublicHost != "" && candidate.PublicPort > 0)
+}
+
+func resolveRemainingChainPath(groups []domain.ChainHopGroup, links []domain.NodeLink, nodes map[string]domain.Node, groupIndex int, currentNodeID string) ([]string, bool) {
+	if groupIndex == len(groups)-1 {
+		return nil, true
+	}
+	for _, candidateID := range groups[groupIndex+1].Candidates {
+		if _, exists := nodes[candidateID]; !exists || !chainLinkExists(links, currentNodeID, candidateID) {
+			continue
+		}
+		tail, connected := resolveRemainingChainPath(groups, links, nodes, groupIndex+1, candidateID)
+		if connected {
+			return append([]string{candidateID}, tail...), true
+		}
+	}
+	return nil, false
+}
+
+func chainLinkExists(links []domain.NodeLink, sourceNodeID string, targetNodeID string) bool {
+	for _, link := range links {
+		if link.SourceNodeID == sourceNodeID && link.TargetNodeID == targetNodeID {
+			return true
+		}
+	}
+	return false
 }

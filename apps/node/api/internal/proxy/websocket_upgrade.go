@@ -66,6 +66,36 @@ func (s *Server) upgradeViaStream(w http.ResponseWriter, req *http.Request, hop 
 	completeUpgrade(w, req, streamConn, tracker)
 }
 
+func (s *Server) upgradeViaCandidates(w http.ResponseWriter, req *http.Request, hops []chainHop, tracker *proxySessionTracker) {
+	targetHost, targetPort := targetAddress(req)
+	var backendConn net.Conn
+	var selected chainHop
+	var lastErr error
+	for _, hop := range hops {
+		if s.shouldUseStream(hop.node) {
+			backendConn, lastErr = openDirectFirstStream(req.Context(), s.directStream, s.fallbackStreamOpener(), hop, targetHost, targetPort)
+		} else {
+			backendConn, lastErr = dialTCPWithTimeout(req.Context(), net.JoinHostPort(hop.node.PublicHost, strconv.Itoa(hop.node.PublicPort)))
+		}
+		if lastErr != nil {
+			continue
+		}
+		if lastErr = writeUpgradeRequest(backendConn, req, !s.shouldUseStream(hop.node)); lastErr != nil {
+			backendConn.Close()
+			continue
+		}
+		selected = hop
+		break
+	}
+	if lastErr != nil || selected.node.ID == "" {
+		tracker.finish(0, 0, domain.ProxySessionStatusError, proxyErrorChainCandidatesUnavailable, proxyErrorChainCandidatesUnavailable)
+		writeProxyError(w, req, proxyErrorChainCandidatesUnavailable, http.StatusBadGateway)
+		return
+	}
+	tracker.markForward()
+	completeUpgrade(w, req, backendConn, tracker)
+}
+
 func writeUpgradeRequest(conn net.Conn, req *http.Request, absoluteForm bool) error {
 	outbound := req.Clone(req.Context())
 	outbound.Header = req.Header.Clone()

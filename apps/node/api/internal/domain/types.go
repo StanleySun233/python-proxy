@@ -42,12 +42,16 @@ type NodeLink struct {
 }
 
 type Chain struct {
-	ID               string   `json:"id"`
-	TenantID         string   `json:"tenantId,omitempty"`
-	Name             string   `json:"name"`
-	DestinationScope string   `json:"destinationScope"`
-	Enabled          bool     `json:"enabled"`
-	Hops             []string `json:"hops"`
+	ID               string          `json:"id"`
+	TenantID         string          `json:"tenantId,omitempty"`
+	Name             string          `json:"name"`
+	DestinationScope string          `json:"destinationScope"`
+	Enabled          bool            `json:"enabled"`
+	HopGroups        []ChainHopGroup `json:"hopGroups"`
+}
+
+type ChainHopGroup struct {
+	Candidates []string `json:"candidates"`
 }
 
 type RouteRule struct {
