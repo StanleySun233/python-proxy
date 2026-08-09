@@ -17,8 +17,8 @@ export const statusClass: Record<RemoteStatus, string> = {
   failed: 'is-failed'
 };
 
-export function remoteTCPPaths(paths: NodeAccessPath[]) {
-  return paths.filter((path) => path.enabled && path.mode === 'tcp' && path.protocol === 'tcp' && path.serviceType === 'tcp_access');
+export function remoteTCPPaths(paths: NodeAccessPath[], protocol: RemoteProtocol) {
+  return paths.filter((path) => path.enabled && path.mode === 'tcp' && path.protocol === 'tcp' && path.serviceType === 'tcp_access' && path.remoteProtocol === protocol);
 }
 
 export function validSecret(protocol: RemoteProtocol, secret: RemoteSecret) {

@@ -3,6 +3,7 @@ import type {
   RemoteCredential,
   RemoteCredentialPayload,
   RemoteCredentialUpdatePayload,
+  RemoteAccessDefault,
   RemoteProtocol,
   RemoteSession,
   RemoteSessionPayload
@@ -10,6 +11,14 @@ import type {
 
 export function getRemoteCredentials(accessToken: string, tenantId: string | null, protocol: RemoteProtocol) {
   return request<RemoteCredential[]>(`/remote/credentials?protocol=${encodeURIComponent(protocol)}`, {accessToken, tenantId});
+}
+
+export function getRemoteAccessDefaults(accessToken: string, tenantId: string | null) {
+  return request<RemoteAccessDefault[]>('/remote/defaults', {accessToken, tenantId});
+}
+
+export function setRemoteAccessDefault(accessToken: string, tenantId: string | null, protocol: RemoteProtocol, accessPathId: string) {
+  return request<RemoteAccessDefault>(`/remote/defaults/${protocol}`, {method: 'PUT', accessToken, tenantId, body: {accessPathId}});
 }
 
 export function createRemoteCredential(accessToken: string, tenantId: string | null, payload: RemoteCredentialPayload) {

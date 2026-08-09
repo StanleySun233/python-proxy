@@ -34,7 +34,7 @@ export type RemoteCredentialUpdatePayload = {
 };
 
 export type RemoteSessionPayload = {
-  accessPathId: string;
+  accessPathId?: string;
   credentialId?: string;
   protocol: RemoteProtocol;
   username: string;
@@ -50,8 +50,17 @@ export type RemoteSession = {
   id: string;
   token: string;
   protocol: RemoteProtocol;
+  accessPathId: string;
   expiresAt: string;
   tunnelUrl: string;
+};
+
+export type RemoteAccessDefault = {
+  tenantId: string;
+  protocol: RemoteProtocol;
+  accessPathId: string;
+  updatedBy: string;
+  updatedAt: string;
 };
 
 export type RemoteSecret = {

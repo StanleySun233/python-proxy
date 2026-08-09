@@ -1,7 +1,7 @@
 'use client';
 
 import {useQuery, useQueryClient} from '@tanstack/react-query';
-import {KeyRound, Monitor, PlugZap, RefreshCw, Save, Terminal, Trash2, Unplug} from 'lucide-react';
+import {CheckCircle2, KeyRound, Monitor, PlugZap, RefreshCw, Save, Settings2, Terminal, Trash2, Unplug} from 'lucide-react';
 import {useTranslations} from 'next-intl';
 import {useSearchParams} from 'next/navigation';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
@@ -9,7 +9,8 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {AuthGate} from '@/components/auth-gate';
 import {useAuth} from '@/components/auth-provider';
 import {ConsolePage} from '@/components/console-template';
-import {createRemoteCredential, createRemoteSession, deleteRemoteCredential, getNodeAccessPaths, getRemoteCredentials} from '@/lib/api';
+import {Link} from '@/i18n/navigation';
+import {createRemoteCredential, createRemoteSession, deleteRemoteCredential, getNodeAccessPaths, getRemoteAccessDefaults, getRemoteCredentials, setRemoteAccessDefault} from '@/lib/api';
 import {decryptRemoteSecret, encryptRemoteSecret} from '@/lib/remote-vault';
 import type {RemoteCredential, RemoteCredentialScope, RemoteProtocol, RemoteSecret, RemoteSession} from '@/lib/types';
 
@@ -48,6 +49,7 @@ export function RemotePage({protocol}: RemotePageProps) {
   const [status, setStatus] = useState<RemoteStatus>('idle');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingDefault, setSavingDefault] = useState(false);
 
   const accessPathsQuery = useQuery({
     queryKey: ['node-access-paths', accessToken, activeTenantId, 'remote'],
@@ -59,10 +61,18 @@ export function RemotePage({protocol}: RemotePageProps) {
     queryFn: () => getRemoteCredentials(accessToken, activeTenantId, protocol),
     enabled: !!accessToken
   });
+  const defaultsQuery = useQuery({
+    queryKey: ['remote-access-defaults', accessToken, activeTenantId],
+    queryFn: () => getRemoteAccessDefaults(accessToken, activeTenantId),
+    enabled: !!accessToken && !!activeTenantId
+  });
 
-  const tcpPaths = useMemo(() => remoteTCPPaths(accessPathsQuery.data || []), [accessPathsQuery.data]);
+  const tcpPaths = useMemo(() => remoteTCPPaths(accessPathsQuery.data || [], protocol), [accessPathsQuery.data, protocol]);
+  const remoteDefault = (defaultsQuery.data || []).find((item) => item.protocol === protocol) || null;
+  const defaultPath = tcpPaths.find((item) => item.id === remoteDefault?.accessPathId) || null;
+  const effectiveAccessPathId = accessPathId || defaultPath?.id || '';
   const selectedCredential = (credentialsQuery.data || []).find((item) => item.id === credentialId) || null;
-  const selectedPath = tcpPaths.find((item) => item.id === accessPathId) || null;
+  const selectedPath = tcpPaths.find((item) => item.id === effectiveAccessPathId) || null;
   const title = protocol === 'ssh' ? shellT('remoteSSH') : shellT('remoteRDP');
   const SecretIcon = protocol === 'ssh' ? Terminal : Monitor;
 
@@ -72,12 +82,6 @@ export function RemotePage({protocol}: RemotePageProps) {
       setAccessPathId(queryPathId);
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!accessPathId && tcpPaths[0]) {
-      setAccessPathId(tcpPaths[0].id);
-    }
-  }, [accessPathId, tcpPaths]);
 
   useEffect(() => {
     if (credentialMode === 'saved' && selectedCredential) {
@@ -197,7 +201,7 @@ export function RemotePage({protocol}: RemotePageProps) {
       }
       const rect = displayShellRef.current?.getBoundingClientRect();
       const remoteSession = await createRemoteSession(accessToken, activeTenantId, {
-        accessPathId,
+        accessPathId: accessPathId || undefined,
         credentialId: credentialMode === 'saved' ? credentialId : undefined,
         protocol,
         username,
@@ -212,6 +216,23 @@ export function RemotePage({protocol}: RemotePageProps) {
     } catch (caught) {
       setStatus('failed');
       setError(caught instanceof Error ? caught.message : t('connectionFailed'));
+    }
+  };
+
+  const handleSaveDefault = async () => {
+    if (!selectedPath || !activeTenantId || !canSaveTenant) {
+      return;
+    }
+    setSavingDefault(true);
+    setError('');
+    try {
+      await setRemoteAccessDefault(accessToken, activeTenantId, protocol, selectedPath.id);
+      setAccessPathId('');
+      await queryClient.invalidateQueries({queryKey: ['remote-access-defaults', accessToken, activeTenantId]});
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t('defaultSaveFailed'));
+    } finally {
+      setSavingDefault(false);
     }
   };
 
@@ -272,9 +293,26 @@ export function RemotePage({protocol}: RemotePageProps) {
               <h4>{t('connection')}</h4>
             </div>
             <div className="remote-form-grid">
+              <div className={`remote-default-card${defaultPath ? ' is-configured' : ''}`}>
+                <div>
+                  {defaultPath ? <CheckCircle2 size={17} /> : <Settings2 size={17} />}
+                  <span>{t('tenantDefault')}</span>
+                </div>
+                <strong>{defaultPath?.name || t('defaultNotConfigured')}</strong>
+                <small>{defaultPath ? t('defaultSourceHint') : t('defaultRequiredHint')}</small>
+                <div className="remote-default-actions">
+                  {canSaveTenant && selectedPath ? (
+                    <button className="ghost-button" disabled={savingDefault || defaultPath?.id === selectedPath.id} onClick={handleSaveDefault} type="button">
+                      {savingDefault ? t('savingDefault') : t('setAsDefault')}
+                    </button>
+                  ) : null}
+                  <Link className="ghost-button" href="/proxy/network">{t('managePaths')}</Link>
+                </div>
+              </div>
               <label className="field-stack">
                 <span>{t('accessPath')}</span>
                 <select className="field-select" onChange={(event) => setAccessPathId(event.target.value)} value={accessPathId}>
+                  <option value="">{defaultPath ? t('useTenantDefault', {name: defaultPath.name}) : t('defaultNotConfigured')}</option>
                   {tcpPaths.map((path) => (
                     <option key={path.id} value={path.id}>{path.name}</option>
                   ))}
@@ -310,7 +348,7 @@ export function RemotePage({protocol}: RemotePageProps) {
               ) : null}
             </div>
             <div className="remote-actions">
-              <button className="primary-button" disabled={status === 'connecting' || tcpPaths.length === 0} onClick={handleConnect} type="button">
+              <button className="primary-button" disabled={status === 'connecting' || !selectedPath} onClick={handleConnect} type="button">
                 <PlugZap size={16} />
                 {t('connect')}
               </button>
@@ -321,6 +359,7 @@ export function RemotePage({protocol}: RemotePageProps) {
               <button className="ghost-button" onClick={() => {
                 accessPathsQuery.refetch();
                 credentialsQuery.refetch();
+                defaultsQuery.refetch();
               }} type="button">
                 <RefreshCw size={16} />
                 {t('refresh')}

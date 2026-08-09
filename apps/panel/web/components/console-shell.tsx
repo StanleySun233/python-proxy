@@ -98,7 +98,8 @@ export function ConsoleShell({children}: {children: ReactNode}) {
       icon: Monitor,
       items: [
         {label: t('shell.remoteSSH'), href: '/remote/ssh'},
-        {label: t('shell.remoteRDP'), href: '/remote/rdp'}
+        {label: t('shell.remoteRDP'), href: '/remote/rdp'},
+        {label: t('shell.remotePaths'), href: '/proxy/network'}
       ]
     },
     {

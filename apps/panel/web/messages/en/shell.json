@@ -22,6 +22,7 @@
   "accessPaths": "Network",
   "remoteSSH": "WebSSH",
   "remoteRDP": "WebRDP",
+  "remotePaths": "Access paths",
   "routeBoard": "Rules",
   "routeGroups": "Rule groups",
   "routeRules": "Rules",

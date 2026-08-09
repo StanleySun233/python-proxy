@@ -22,6 +22,7 @@
   "accessPaths": "网络",
   "remoteSSH": "WebSSH",
   "remoteRDP": "WebRDP",
+  "remotePaths": "访问链路配置",
   "routeBoard": "规则",
   "routeGroups": "规则组",
   "routeRules": "规则",

@@ -42,6 +42,7 @@ export type {Tenant, TenantCreatedResult, TenantMembershipAccount} from './tenan
 export type {ResourceBinding, ResourceBindingPayload, ResourceBindingPermission, ResourceBindingType, ResourcePermissionMetadata} from './grants';
 export type {
   RemoteCredential,
+  RemoteAccessDefault,
   RemoteCredentialPayload,
   RemoteCredentialScope,
   RemoteCredentialUpdatePayload,
