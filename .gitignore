@@ -238,6 +238,7 @@ apps/node/api/tmp/
 apps/node/api/runtime/*.json
 apps/panel/web/.next/
 apps/panel/web/node_modules/
+node_modules/
 *.tsbuildinfo
 !apps/panel/web/lib/
 !apps/panel/web/lib/*.ts
